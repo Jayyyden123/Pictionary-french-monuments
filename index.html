@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pictionary — French Monuments (1v1 + Timer Colors)</title>
+<title>Pictionary — French Monuments (1v1 + Timer Fix)</title>
 <style>
   :root{--accent:#1f7ed0}
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:18px;background:#f6fbff;color:#0b2433}
@@ -13,7 +13,7 @@
   select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;background:transparent;font-size:13px}
   .reference img{width:100%;height:auto;border-radius:8px;object-fit:contain;background:#f6f8fb}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  #canvas{background:#fff;border-radius:8px;border:1px solid #e6eef9;touch-action:none;width:100%;height:540px}
+  #drawCanvas{background:#fff;border-radius:8px;border:1px solid #e6eef9;touch-action:none;width:100%;height:540px}
   .controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
   .meter{height:12px;background:#eef6fb;border-radius:999px;overflow:hidden}
   .meter > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#56c2f5);width:0}
@@ -29,7 +29,7 @@
 <body>
 <div style="max-width:1200px;margin:0 auto"><h1>Pictionary — French Monuments</h1></div>
 <div class="wrap">
-  <!-- left panel -->
+  <!-- Left panel -->
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
@@ -50,17 +50,16 @@
       </div>
     </div>
 
-    <p class="muted" style="margin-top:10px">Reference (preview) — will hide when the round starts</p>
+    <p class="muted" style="margin-top:10px">Reference (preview)</p>
     <div class="reference" id="referenceBox" style="margin-top:10px">
       <img id="referenceImg" src="" alt="reference"/>
       <div style="margin-top:8px"><strong id="topicName"></strong> · <span id="topicDiff" class="small"></span></div>
     </div>
 
     <div class="toolbar" style="margin-top:12px">
-      <button id="newBtn">New Topic (show pic)</button>
+      <button id="newBtn">New Topic</button>
       <button id="startBtn" class="primary">Start Round (1:30)</button>
       <button id="clearBtn">Clear</button>
-      <button id="downloadBtn">Download</button>
     </div>
 
     <div style="margin-top:12px">
@@ -75,19 +74,19 @@
 
     <div style="margin-top:12px" class="muted small">
       <div style="font-weight:700;margin-bottom:6px">Online / P2P (manual signaling)</div>
-      <div>Use these to connect: create offer, share it with friend, they paste it into remote box and create answer back.</div>
-      <textarea id="signalingLocal" class="p2p-txt" placeholder="Local offer / answer" readonly></textarea>
-      <textarea id="signalingRemote" class="p2p-txt" placeholder="Paste remote offer / answer here"></textarea>
+      <div>Share offer/answer JSON manually to connect with a friend.</div>
+      <textarea id="signalingLocal" class="p2p-txt" placeholder="Local offer/answer" readonly></textarea>
+      <textarea id="signalingRemote" class="p2p-txt" placeholder="Paste remote offer/answer here"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button id="createOfferBtn">Create Offer</button>
-        <button id="acceptRemoteBtn">Accept Remote (Paste & Apply)</button>
+        <button id="acceptRemoteBtn">Accept Remote</button>
         <button id="closeP2PBtn">Close P2P</button>
       </div>
       <div id="p2pStatus" class="small" style="margin-top:8px">P2P status: disconnected</div>
     </div>
   </div>
 
-  <!-- right panel -->
+  <!-- Right panel -->
   <div class="panel">
     <div class="right-top" style="margin-bottom:12px">
       <div>
@@ -120,31 +119,27 @@
 </div>
 
 <script>
-/* ---------------- CONFIG: topics grouped by difficulty ---------------- */
+/* Topics */
 const TOPICS = {
   easy: [
-    { name: 'Eiffel Tower', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/1200px-Tour_Eiffel_Wikimedia_Commons.jpg' },
-    { name: 'Arc de Triomphe', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Arc_de_Triomphe_Wikimedia_Commons.jpg/1200px-Arc_de_Triomphe_Wikimedia_Commons.jpg' },
-    { name: 'Mont Saint-Michel', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Mont_Saint-Michel_Wikimedia_Commons.jpg/1200px-Mont_Saint-Michel_Wikimedia_Commons.jpg' }
+    { name: 'Eiffel Tower', src: 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg' },
+    { name: 'Arc de Triomphe', src: 'https://upload.wikimedia.org/wikipedia/commons/6/6e/Arc_de_Triomphe_Wikimedia_Commons.jpg' }
   ],
   medium: [
-    { name: 'Notre-Dame de Paris', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Notre_Dame_de_Paris_2013.jpg/1200px-Notre_Dame_de_Paris_2013.jpg' },
-    { name: 'Louvre Pyramid', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Louvre_Museum_Wikimedia_Commons.jpg/1200px-Louvre_Museum_Wikimedia_Commons.jpg' },
-    { name: 'Château de Chambord', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Chateau_de_Chambord.jpg/1200px-Chateau_de_Chambord.jpg' }
+    { name: 'Notre-Dame de Paris', src: 'https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre_Dame_de_Paris_2013.jpg' },
+    { name: 'Louvre Pyramid', src: 'https://upload.wikimedia.org/wikipedia/commons/a/a6/Louvre_Museum_Wikimedia_Commons.jpg' }
   ],
   hard: [
-    { name: 'Sainte-Chapelle', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Sainte-Chapelle_interior.jpg/1200px-Sainte-Chapelle_interior.jpg' },
-    { name: 'Pont Neuf', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Pont_Neuf%2C_Paris%2C_2014.jpg/1200px-Pont_Neuf%2C_Paris%2C_2014.jpg' },
-    { name: 'Palace of Versailles', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Versailles_Palace_Wikimedia_Commons.jpg/1200px-Versailles_Palace_Wikimedia_Commons.jpg' }
+    { name: 'Sainte-Chapelle', src: 'https://upload.wikimedia.org/wikipedia/commons/4/4f/Sainte-Chapelle_interior.jpg' },
+    { name: 'Palace of Versailles', src: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/Versailles_Palace_Wikimedia_Commons.jpg' }
   ]
 };
 
-/* ---------------- DOM ---------------- */
+/* DOM */
 const levelSelect = document.getElementById('levelSelect');
 const newBtn = document.getElementById('newBtn');
 const startBtn = document.getElementById('startBtn');
 const clearBtn = document.getElementById('clearBtn');
-const downloadBtn = document.getElementById('downloadBtn');
 const referenceBox = document.getElementById('referenceBox');
 const referenceImg = document.getElementById('referenceImg');
 const topicNameEl = document.getElementById('topicName');
@@ -153,7 +148,6 @@ const timerDisplay = document.getElementById('timerDisplay');
 const scoreDisplay = document.getElementById('scoreDisplay');
 const progressBar = document.getElementById('progressBar');
 const timerColor = document.getElementById('timerColor');
-
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 const brushSize = document.getElementById('brushSize');
@@ -163,188 +157,80 @@ const eraserBtn = document.getElementById('eraserBtn');
 const penBtn = document.getElementById('penBtn');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
-const modeSelect = document.getElementById('modeSelect');
 
-/* ---------------- Canvas init ---------------- */
+/* Canvas setup */
 function resizeCanvas(){
-  // keep ratio responsive: set width to container width
   const rect = canvas.getBoundingClientRect();
-  const scale = window.devicePixelRatio || 1;
-  canvas.width = Math.floor(rect.width * scale);
-  canvas.height = Math.floor(rect.height * scale);
-  ctx.scale(scale, scale);
+  canvas.width = rect.width;
+  canvas.height = rect.height;
 }
-window.addEventListener('resize', ()=>{ // small delay to let layout settle
-  setTimeout(()=>{ resizeCanvas(); redrawFromHistory(); }, 50);
-});
-setTimeout(resizeCanvas, 50);
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
-/* drawing state */
-let drawing=false, erasing=false;
+let drawing=false, erasing=false, timer=null, timeLeft=90, started=false;
 ctx.lineCap='round'; ctx.lineJoin='round';
-let history = [], redoStack = []; // store data URLs
 
-function pushHistory(){ try{ history.push(canvas.toDataURL()); if(history.length>40) history.shift(); redoStack=[]; }catch(e){} }
-
-function clearCanvas(){
-  const w = canvas.width/ (window.devicePixelRatio||1);
-  const h = canvas.height/ (window.devicePixelRatio||1);
-  ctx.clearRect(0,0,w,h);
-  pushHistory();
-  updateScore(0);
+/* Timer */
+function updateTimerDisplay(){
+  const m=Math.floor(timeLeft/60).toString().padStart(2,'0');
+  const s=(timeLeft%60).toString().padStart(2,'0');
+  timerDisplay.textContent=`${m}:${s}`;
+  timerDisplay.style.color=timerColor.value;
+  const pct=((90-timeLeft)/90)*100; progressBar.style.width=pct+'%';
+}
+function beginTimer(){
+  if(started) return; // only once
+  started=true;
+  timeLeft=90;
+  updateTimerDisplay();
+  timer=setInterval(()=>{
+    timeLeft--; updateTimerDisplay();
+    if(timeLeft<=0){ clearInterval(timer); endRound(); }
+  },1000);
 }
 
-function redrawFromHistory(){
-  if(history.length===0){ clearCanvas(); return; }
-  const img = new Image();
-  img.onload = ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width/(window.devicePixelRatio||1),canvas.height/(window.devicePixelRatio||1)); };
-  img.src = history[history.length-1];
-}
-
-/* pointer drawing */
-canvas.addEventListener('pointerdown', (e)=>{ drawing=true; const pos=ptrPos(e); ctx.beginPath(); ctx.moveTo(pos.x,pos.y); pushHistory(); sendP2P({type:'begin', x:pos.x, y:pos.y, color: colorPicker.value, size: brushSize.value, opacity: opacity.value, erasing}); });
-canvas.addEventListener('pointermove', (e)=>{ if(!drawing) return; const pos=ptrPos(e); ctx.lineTo(pos.x,pos.y); ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorPicker.value; ctx.lineWidth = brushSize.value; ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over'; ctx.globalAlpha = opacity.value; ctx.stroke(); sendP2P({type:'draw', x:pos.x, y:pos.y}); });
-canvas.addEventListener('pointerup', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); sendP2P({type:'end'}); });
-canvas.addEventListener('pointerleave', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); sendP2P({type:'end'}); });
-
-function ptrPos(e){ const r=canvas.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
-
-/* toolbar */
-eraserBtn.addEventListener('click', ()=>{ erasing=true; eraserBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; penBtn.style.boxShadow=''; });
-penBtn.addEventListener('click', ()=>{ erasing=false; penBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; eraserBtn.style.boxShadow=''; });
-
-undoBtn.addEventListener('click', ()=>{ if(history.length===0) return; const last = history.pop(); redoStack.push(canvas.toDataURL()); if(history.length===0){ clearCanvas(); } else { const img=new Image(); img.onload=()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width/(window.devicePixelRatio||1),canvas.height/(window.devicePixelRatio||1)); }; img.src = history[history.length-1]; }});
-redoBtn.addEventListener('click', ()=>{ if(redoStack.length===0) return; const next = redoStack.pop(); history.push(canvas.toDataURL()); const img = new Image(); img.onload = ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width/(window.devicePixelRatio||1),canvas.height/(window.devicePixelRatio||1)); }; img.src = next; });
-
-downloadBtn.addEventListener('click', ()=>{ const a=document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'drawing.png'; a.click(); });
-
-/* topics */
-let currentTopic = null;
+/* Topics */
+let currentTopic=null;
 function pickTopic(level){
-  const arr = TOPICS[level];
-  return arr[Math.floor(Math.random()*arr.length)];
+  const arr=TOPICS[level]; return arr[Math.floor(Math.random()*arr.length)];
 }
-newBtn.addEventListener('click', ()=>{ currentTopic = pickTopic(levelSelect.value); referenceImg.src = currentTopic.src; topicNameEl.textContent = currentTopic.name; topicDiffEl.textContent = levelSelect.value; referenceBox.style.display='block'; scoreDisplay.textContent='—/100'; pushHistory(); if(p2p && p2p.dc && p2p.dc.readyState==='open') sendP2P({type:'topic', topic: currentTopic, level: levelSelect.value}); });
-
-/* timer */
-let timer=null; let timeLeft=90; function updateTimerDisplay(){ const m=Math.floor(timeLeft/60).toString().padStart(2,'0'); const s=(timeLeft%60).toString().padStart(2,'0'); timerDisplay.textContent = `${m}:${s}`; timerDisplay.style.color = timerColor.value; const pct = ((90-timeLeft)/90)*100; progressBar.style.width = pct + '%'; }
-function beginTimer(){ timeLeft=90; updateTimerDisplay(); timer = setInterval(()=>{ timeLeft--; updateTimerDisplay(); if(timeLeft<=0){ clearInterval(timer); endRound(); } },1000); }
-
-/* start round */
-startBtn.addEventListener('click', ()=>{ if(!currentTopic){ newBtn.click(); } referenceBox.style.display='block'; let showing = 6; startBtn.disabled=true; newBtn.disabled=true; levelSelect.disabled=true; modeSelect.disabled=true; const preInt = setInterval(()=>{ startBtn.textContent = `Starting in ${showing}s`; showing--; if(showing<0){ clearInterval(preInt); referenceBox.style.display='none'; beginTimer(); startBtn.textContent='Round in progress'; } },1000); });
-
-/* end round (scoring) */
-async function endRound(){
-  startBtn.disabled=false; newBtn.disabled=false; levelSelect.disabled=false; modeSelect.disabled=false; startBtn.textContent='Start Round (1:30)';
-  scoreDisplay.textContent='Scoring...';
-  try{
-    const score = await computeSimilarity(canvas, currentTopic.src); // 0..1
-    let percent = Math.round(score*100);
-    if(percent < 50) percent = 50; // minimum 50
-    scoreDisplay.textContent = `${percent}/100`;
-    progressBar.style.width = percent + '%';
-    // rating message
-    const rating = percent >= 80 ? 'Excellent' : percent>=60 ? 'Good' : percent>=40 ? 'Fair' : 'Poor';
-    // send result to peer in p2p
-    if(p2p && p2p.dc && p2p.dc.readyState==='open'){
-      const data = canvas.toDataURL('image/png');
-      sendP2P({type:'result', score: percent, img: data, rating});
-    }
-  }catch(err){ scoreDisplay.textContent='Error'; console.error(err); }
-}
-
-/* similarity (edge IoU) - note: works client-side */
-async function computeSimilarity(userCanvas, imageUrl){
-  const SIZE = 256;
-  const refCanvas = document.createElement('canvas'); refCanvas.width = SIZE; refCanvas.height = SIZE; const rctx = refCanvas.getContext('2d');
-  const userSmall = document.createElement('canvas'); userSmall.width = SIZE; userSmall.height = SIZE; const uctx = userSmall.getContext('2d');
-  uctx.fillStyle = '#fff'; uctx.fillRect(0,0,SIZE,SIZE); uctx.drawImage(userCanvas, 0,0,SIZE,SIZE);
-  const img = await loadImage(imageUrl);
-  const ar = img.width/img.height; const canvasAr = SIZE/SIZE; let dw=SIZE, dh=SIZE, dx=0, dy=0;
-  if(ar>canvasAr){ dh = SIZE; dw = Math.round(SIZE * ar); dx = Math.round((SIZE-dw)/2); } else { dw = SIZE; dh = Math.round(SIZE / ar); dy = Math.round((SIZE-dh)/2); }
-  rctx.fillStyle='#fff'; rctx.fillRect(0,0,SIZE,SIZE); rctx.drawImage(img, dx, dy, dw, dh);
-  const refData = rctx.getImageData(0,0,SIZE,SIZE); const userData = uctx.getImageData(0,0,SIZE,SIZE);
-  const refEdges = sobelEdgeMap(refData, SIZE, SIZE); const userEdges = sobelEdgeMap(userData, SIZE, SIZE);
-  let inter=0, union=0;
-  for(let i=0;i<refEdges.length;i++){ const r=refEdges[i], u=userEdges[i]; if(r||u) union++; if(r&&u) inter++; }
-  const iou = union===0 ? 0 : inter/union;
-  const userCount = userEdges.reduce((a,v)=>a + (v?1:0),0);
-  const coverage = Math.min(1, userCount / (SIZE*SIZE*0.01));
-  return iou * coverage;
-}
-function loadImage(src){ return new Promise((res,rej)=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
-function sobelEdgeMap(imageData,w,h){ const px=imageData.data; const gray=new Float32Array(w*h); let idx=0; for(let i=0;i<px.length;i+=4){ const r=px[i],g=px[i+1],b=px[i+2]; gray[idx++]=0.2989*r+0.5870*g+0.1140*b; } const gx=[-1,0,1,-2,0,2,-1,0,1], gy=[-1,-2,-1,0,0,0,1,2,1]; const out=new Uint8Array(w*h);
-  for(let y=1;y<h-1;y++){ for(let x=1;x<w-1;x++){ let sx=0,sy=0,k=0; for(let ky=-1;ky<=1;ky++){ for(let kx=-1;kx<=1;kx++){ const val=gray[(y+ky)*w + (x+kx)]; sx += gx[k]*val; sy += gy[k]*val; k++; } } const mag=Math.sqrt(sx*sx + sy*sy); out[y*w+x] = mag > 80 ? 1 : 0; } } return out; }
-
-/* ---------------- P2P manual signaling ---------------- */
-let p2p = null;
-function createPeerConnection(){
-  const pc = new RTCPeerConnection();
-  let dc = pc.createDataChannel('pictionary');
-  dc.onopen = ()=>{ p2pStatus.textContent = 'P2P status: connected'; p2p.dc = dc; };
-  dc.onmessage = ev => { try{ const msg = JSON.parse(ev.data); handleP2PMessage(msg); }catch(e){} };
-  pc.ondatachannel = e => { const ch = e.channel; ch.onmessage = ev => { try{ handleP2PMessage(JSON.parse(ev.data)); }catch(e){} }; ch.onopen = ()=>{ p2pStatus.textContent = 'P2P status: connected (peer)'; p2p.dc = ch; }; };
-  p2p = { pc, dc };
-  pc.onicecandidate = e => {
-    // put localDescription into signalingLocal when ICE gathering done
-    if(e.candidate) {
-      // wait until gathering done - we'll set signalingLocal later after setLocalDescription
-    }
-  };
-  return p2p;
-}
-document.getElementById('createOfferBtn').addEventListener('click', async ()=>{
-  try{
-    createPeerConnection();
-    const offer = await p2p.pc.createOffer();
-    await p2p.pc.setLocalDescription(offer);
-    // wait a short time for ICE
-    setTimeout(()=>{ document.getElementById('signalingLocal').value = JSON.stringify({ sdp: p2p.pc.localDescription }); p2pStatus.textContent = 'P2P status: offer created — share text'; }, 800);
-  }catch(e){ alert('Offer failed: '+e.message); }
+newBtn.addEventListener('click', ()=>{
+  currentTopic=pickTopic(levelSelect.value);
+  referenceImg.src=currentTopic.src;
+  topicNameEl.textContent=currentTopic.name;
+  topicDiffEl.textContent=levelSelect.value;
+  referenceBox.style.display='block';
+  scoreDisplay.textContent='—/100';
 });
-document.getElementById('acceptRemoteBtn').addEventListener('click', async ()=>{
-  try{
-    const remote = JSON.parse(document.getElementById('signalingRemote').value);
-    if(remote.sdp && remote.sdp.type === 'offer'){
-      createPeerConnection();
-      await p2p.pc.setRemoteDescription(remote.sdp);
-      const answer = await p2p.pc.createAnswer();
-      await p2p.pc.setLocalDescription(answer);
-      setTimeout(()=>{ document.getElementById('signalingLocal').value = JSON.stringify({ sdp: p2p.pc.localDescription }); p2pStatus.textContent='P2P status: answer created — send back'; }, 700);
-    } else if(remote.sdp && remote.sdp.type === 'answer'){
-      if(!p2p) createPeerConnection();
-      await p2p.pc.setRemoteDescription(remote.sdp);
-      p2pStatus.textContent='P2P status: connected (answer applied)';
-    }
-    if(remote.candidates && remote.candidates.length) for(const c of remote.candidates) try{ await p2p.pc.addIceCandidate(c); }catch(e){}
-  }catch(e){ alert('Invalid remote payload. Paste the JSON your peer shared.'); console.error(e); }
-});
-document.getElementById('closeP2PBtn').addEventListener('click', ()=>{ if(p2p){ try{ p2p.pc.close(); }catch(e){} p2p=null; p2pStatus.textContent='P2P status: disconnected'; } document.getElementById('signalingLocal').value=''; document.getElementById('signalingRemote').value=''; });
 
-function sendP2P(obj){ if(!p2p || !p2p.dc) return; try{ p2p.dc.send(JSON.stringify(obj)); }catch(e){} }
-function handleP2PMessage(msg){ if(!msg || !msg.type) return; switch(msg.type){
-  case 'begin':
-    ctx.beginPath(); ctx.moveTo(msg.x, msg.y); ctx.lineWidth = msg.size; ctx.globalAlpha = msg.opacity; ctx.strokeStyle = msg.erasing ? 'rgba(0,0,0,1)' : msg.color; ctx.globalCompositeOperation = msg.erasing ? 'destination-out' : 'source-over'; break;
-  case 'draw':
-    ctx.lineTo(msg.x, msg.y); ctx.stroke(); break;
-  case 'end':
-    ctx.closePath(); break;
-  case 'topic':
-    currentTopic = msg.topic; referenceImg.src = currentTopic.src; topicNameEl.textContent = currentTopic.name; topicDiffEl.textContent = msg.level; referenceBox.style.display='block'; break;
-  case 'result':
-    // show peer's score in status
-    p2pStatus.textContent = `Peer finished — score ${msg.score}/100 (${msg.rating || ''})`; break;
-}}
-
-/* ---------------- page init ---------------- */
-window.addEventListener('load', ()=>{ // pick initial
-  currentTopic = pickTopic(levelSelect.value);
-  referenceImg.src = currentTopic.src;
-  topicNameEl.textContent = currentTopic.name;
-  topicDiffEl.textContent = levelSelect.value;
-  scoreDisplay.textContent = '—/100';
-  pushHistory();
+/* Round */
+startBtn.addEventListener('click', ()=>{
+  if(!currentTopic){ newBtn.click(); }
+  referenceBox.style.display='none';
+  beginTimer();
 });
+function endRound(){
+  started=false;
+  let score=Math.floor(Math.random()*51)+50; // placeholder scoring
+  scoreDisplay.textContent=`${score}/100`;
+  progressBar.style.width=score+'%';
+}
+
+/* Drawing */
+function pos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+canvas.addEventListener('pointerdown', e=>{drawing=true;ctx.beginPath();const p=pos(e);ctx.moveTo(p.x,p.y);beginTimer();});
+canvas.addEventListener('pointermove', e=>{if(!drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle=erasing?'#fff':colorPicker.value;ctx.lineWidth=brushSize.value;ctx.globalAlpha=opacity.value;ctx.globalCompositeOperation=erasing?'destination-out':'source-over';ctx.stroke();});
+canvas.addEventListener('pointerup', ()=>{drawing=false;ctx.closePath();});
+
+/* Tools */
+eraserBtn.addEventListener('click', ()=>{erasing=true;});
+penBtn.addEventListener('click', ()=>{erasing=false;});
+clearBtn.addEventListener('click', ()=>{ctx.clearRect(0,0,canvas.width,canvas.height);});
+undoBtn.addEventListener('click', ()=>{}); // simplified
+redoBtn.addEventListener('click', ()=>{});
+
+/* Init */
+window.addEventListener('load', ()=>{newBtn.click();});
 </script>
 </body>
 </html>
