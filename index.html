@@ -1,415 +1,260 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pictionary — French Monuments (Single File, Multiplayer)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pictionary — French Monuments</title>
   <style>
-    :root{--accent:#1f7ed0}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:flex;gap:18px;padding:18px;background:#f6fbff;color:#0b2433}
-    .panel{background:white;border-radius:12px;box-shadow:0 6px 18px rgba(20,40,60,.08);padding:14px;width:420px}
-    h1{font-size:18px;margin:0 0 8px}
-    .controls{display:flex;gap:8px;flex-wrap:wrap}
-    select,button,input,textarea{padding:8px 10px;border-radius:8px;border:1px solid #d6e8fb;background:transparent;font-size:13px}
-    .canvas-wrap{background:#fff;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;flex:1}
-    canvas{background:#fff;border-radius:8px;border:1px solid #e6eef9;touch-action:none}
-    .toolbar{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-    .reference{width:100%}
-    .reference img{width:100%;height:140px;object-fit:cover;border-radius:8px;border:1px solid #e6eef9}
-    .meter{height:14px;background:#eef6fb;border-radius:999px;overflow:hidden}
-    .meter > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#56c2f5);width:0}
-    .rating{font-weight:700}
-    small{color:#576a7a}
-    .hint{font-size:13px;color:#2b4b63}
-    .muted{font-size:13px;color:#556b7a}
-    .vertical{display:flex;flex-direction:column;gap:8px}
-    .row{display:flex;gap:8px;align-items:center}
-    textarea{min-height:80px;resize:vertical}
-    .left-column{width:420px}
-    .right-column{flex:1;min-width:540px}
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f8fc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      background: #1e293b;
+      color: white;
+      width: 100%;
+      padding: 15px;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+
+    .container {
+      display: flex;
+      width: 95%;
+      margin-top: 20px;
+      gap: 20px;
+    }
+
+    .left-panel {
+      flex: 1;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .reference-img {
+      width: 100%;
+      height: 250px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #f0f0f0;
+      margin-bottom: 10px;
+    }
+
+    .buttons {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      padding: 8px 14px;
+      background: #2563eb;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1e40af;
+    }
+
+    .right-panel {
+      flex: 2;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #drawing-canvas {
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      width: 100%;
+      height: 500px;
+      cursor: crosshair;
+    }
+
+    .controls {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .score-box {
+      margin-top: 10px;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <div class="panel left-column">
-    <h1>Pictionary — French Monuments</h1>
-    <div class="controls">
-      <label>
-        Mode
-        <select id="modeSelect">
-          <option value="single">Singleplayer</option>
-          <option value="local">Multiplayer — Local (pass & play)</option>
-          <option value="p2p">Multiplayer — Online (manual P2P)</option>
-        </select>
-      </label>
-      <label>
-        Level
-        <select id="levelSelect">
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </label>
+  <header>Pictionary — French Monuments</header>
+
+  <div class="container">
+    <div class="left-panel">
+      <h3 id="topic-title">Reference (preview)</h3>
+      <img id="reference-image" class="reference-img" src="" alt="Reference Monument" />
+      <div class="buttons">
+        <button onclick="newTopic()">New Topic</button>
+        <button onclick="clearCanvas()">Clear</button>
+        <button onclick="downloadDrawing()">Download</button>
+      </div>
     </div>
 
-    <p class="hint">Choose a mode. In online P2P mode you'll be given a connection offer/answer you can copy-paste to a friend (no server required). Local mode lets players take turns on the same device.</p>
-
-    <div class="reference vertical" id="referenceBox" style="display:none">
-      <div style="font-size:13px;margin-bottom:6px">Reference (preview) — will hide when the round starts</div>
-      <img id="referenceImg" src="" alt="reference"/>
-      <div style="margin-top:6px;font-size:13px"><strong id="topicName"></strong> · Difficulty: <span id="topicDiff"></span></div>
-    </div>
-
-    <div style="margin-top:12px" class="vertical">
-      <div class="row">
-        <button id="newBtn">New Topic (show pic)</button>
-        <button id="startBtn">Start Round (1:30)</button>
-        <button id="clearBtn">Clear</button>
-        <button id="downloadBtn">Download</button>
+    <div class="right-panel">
+      <canvas id="drawing-canvas"></canvas>
+      <div class="controls">
+        <label>Brush: <input type="range" id="brush-size" min="1" max="20" value="3" /></label>
+        <label>Opacity: <input type="range" id="brush-opacity" min="0.1" max="1" step="0.1" value="1" /></label>
+        <button onclick="undo()">Undo</button>
+        <button onclick="redo()">Redo</button>
       </div>
-
-      <div>
-        <div style="font-weight:700">Online / P2P (manual signaling)</div>
-        <div class="muted">Use these to connect: create offer, share it with friend, they paste it into remote box and create answer back.</div>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-direction:column">
-          <textarea id="signalingLocal" placeholder="Local offer / answer" ></textarea>
-          <textarea id="signalingRemote" placeholder="Paste remote offer / answer here"></textarea>
-          <div style="display:flex;gap:8px">
-            <button id="createOfferBtn">Create Offer</button>
-            <button id="acceptRemoteBtn">Accept Remote (Paste & Apply)</button>
-            <button id="closeP2PBtn">Close P2P</button>
-          </div>
-          <div id="p2pStatus" class="muted">P2P status: disconnected</div>
-        </div>
+      <div class="score-box">
+        Score: <span id="score-display">50/100</span>
       </div>
-
     </div>
   </div>
 
-  <div class="panel right-column canvas-wrap">
-    <div style="display:flex;align-items:center;gap:12px;width:100%;justify-content:space-between">
-      <div>
-        <div style="font-size:13px">Timer</div>
-        <div id="timerDisplay" style="font-size:20px;font-weight:700">01:30</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:13px">Score</div>
-        <div id="scoreDisplay" style="font-size:18px;font-weight:700">—</div>
-      </div>
-    </div>
+  <script>
+    const canvas = document.getElementById("drawing-canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
 
-    <canvas id="drawCanvas" width="900" height="540" style="margin-top:12px"></canvas>
+    let drawing = false;
+    let paths = [];
+    let undone = [];
 
-    <div class="toolbar">
-      <label>Brush: <input id="brushSize" type="range" min="1" max="80" value="6"></label>
-      <label>Opacity: <input id="opacity" type="range" min="0.1" max="1" step="0.1" value="1"></label>
-      <label>Color: <input id="colorPicker" type="color" value="#000000"></label>
-      <button id="eraserBtn">Eraser</button>
-      <button id="penBtn">Pen</button>
-      <button id="undoBtn">Undo</button>
-      <button id="redoBtn">Redo</button>
-    </div>
+    const topics = [
+      {
+        name: "Eiffel Tower",
+        img: "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg"
+      },
+      {
+        name: "Louvre Museum",
+        img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Louvre_Museum_Wikimedia_Commons.jpg"
+      },
+      {
+        name: "Arc de Triomphe",
+        img: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg"
+      },
+      {
+        name: "Notre-Dame Cathedral",
+        img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre_Dame_de_Paris_2013.jpg"
+      },
+      {
+        name: "Palace of Versailles",
+        img: "https://upload.wikimedia.org/wikipedia/commons/4/43/Palace_of_Versailles_West_facade.jpg"
+      }
+    ];
 
-    <div style="width:100%;margin-top:12px">
-      <div class="meter" aria-hidden><i id="progressBar"></i></div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px"><small>0% — Not similar</small><small>100% — Very similar</small></div>
-    </div>
-  </div>
-
-<script>
-// ----- CONFIG: list of French monuments grouped by difficulty -----
-const TOPICS = {
-  easy: [
-    { name: 'Eiffel Tower', src: 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg' },
-    { name: 'Arc de Triomphe', src: 'https://upload.wikimedia.org/wikipedia/commons/6/6d/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg' },
-    { name: 'Mont Saint-Michel', src: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Le_Mont_Saint-Michel_et_ses_marees.jpg' }
-  ],
-  medium: [
-    { name: 'Notre-Dame de Paris', src: 'https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre_Dame_de_Paris_2013-07-24.jpg' },
-    { name: 'Louvre Pyramid', src: 'https://upload.wikimedia.org/wikipedia/commons/6/6e/Louvre_Museum_Wikimedia_Commons.jpg' },
-    { name: 'Château de Chambord', src: 'https://upload.wikimedia.org/wikipedia/commons/3/34/Chateau_de_Chambord.jpg' }
-  ],
-  hard: [
-    { name: 'Sainte-Chapelle', src: 'https://upload.wikimedia.org/wikipedia/commons/4/4f/Sainte-Chapelle_interior.jpg' },
-    { name: 'Pont Neuf', src: 'https://upload.wikimedia.org/wikipedia/commons/3/3a/Pont_Neuf%2C_Paris%2C_2014.jpg' },
-    { name: 'Palace of Versailles (Gardens)', src: 'https://upload.wikimedia.org/wikipedia/commons/9/91/Versailles_Garden.jpg' }
-  ]
-};
-
-// ----- DOM -----
-const modeSelect = document.getElementById('modeSelect');
-const levelSelect = document.getElementById('levelSelect');
-const newBtn = document.getElementById('newBtn');
-const startBtn = document.getElementById('startBtn');
-const clearBtn = document.getElementById('clearBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const referenceBox = document.getElementById('referenceBox');
-const referenceImg = document.getElementById('referenceImg');
-const topicName = document.getElementById('topicName');
-const topicDiff = document.getElementById('topicDiff');
-const timerDisplay = document.getElementById('timerDisplay');
-const scoreDisplay = document.getElementById('scoreDisplay');
-const progressBar = document.getElementById('progressBar');
-const p2pStatus = document.getElementById('p2pStatus');
-
-// signaling UI
-const signalingLocal = document.getElementById('signalingLocal');
-const signalingRemote = document.getElementById('signalingRemote');
-const createOfferBtn = document.getElementById('createOfferBtn');
-const acceptRemoteBtn = document.getElementById('acceptRemoteBtn');
-const closeP2PBtn = document.getElementById('closeP2PBtn');
-
-// canvas drawing
-const canvas = document.getElementById('drawCanvas');
-const ctx = canvas.getContext('2d');
-let drawing=false, erasing=false;
-const brushSize = document.getElementById('brushSize');
-const opacity = document.getElementById('opacity');
-const colorPicker = document.getElementById('colorPicker');
-const eraserBtn = document.getElementById('eraserBtn');
-const penBtn = document.getElementById('penBtn');
-const undoBtn = document.getElementById('undoBtn');
-const redoBtn = document.getElementById('redoBtn');
-
-// state
-let currentTopic = null;
-let timer = null;
-let timeLeft = 90; // seconds
-let preShowSeconds = 6; // show reference before starting
-let history = [], redoStack = [];
-let p2p = null; // { pc, dc }
-let playerTurn = 1; // for local multiplayer
-
-function setCanvasDefaults(){
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-}
-setCanvasDefaults();
-
-function pushHistory(){
-  try{
-    history.push(canvas.toDataURL());
-    if(history.length>50) history.shift();
-    redoStack = [];
-  }catch(e){ console.warn('history failed',e); }
-}
-
-// handle pointer drawing (mouse + touch)
-function getPos(e){ const r = canvas.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
-
-canvas.addEventListener('pointerdown', (e)=>{ drawing=true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); pushHistory(); sendP2P({type:'begin', x:p.x, y:p.y, color:colorPicker.value, size:brushSize.value, opacity:opacity.value, erasing}); } );
-canvas.addEventListener('pointermove', (e)=>{ if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorPicker.value; ctx.lineWidth = brushSize.value; ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over'; ctx.globalAlpha = opacity.value; ctx.stroke(); sendP2P({type:'draw', x:p.x, y:p.y}); } );
-canvas.addEventListener('pointerup', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); sendP2P({type:'end'}); } );
-canvas.addEventListener('pointerleave', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); sendP2P({type:'end'}); } );
-
-brushSize.addEventListener('input', ()=>{});
-opacity.addEventListener('input', ()=>{});
-colorPicker.addEventListener('input', ()=>{});
-eraserBtn.addEventListener('click', ()=>{ erasing=true; eraserBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; penBtn.style.boxShadow=''; });
-penBtn.addEventListener('click', ()=>{ erasing=false; penBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; eraserBtn.style.boxShadow=''; });
-
-clearBtn.addEventListener('click', ()=>{ setCanvasDefaults(); scoreDisplay.textContent='—'; progressBar.style.width='0%'; pushHistory(); });
-
-undoBtn.addEventListener('click', ()=>{ if(history.length===0) return; const last = history.pop(); redoStack.push(canvas.toDataURL()); const img = new Image(); img.onload = ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); }; img.src = last; });
-redoBtn.addEventListener('click', ()=>{ if(redoStack.length===0) return; const next = redoStack.pop(); history.push(canvas.toDataURL()); const img = new Image(); img.onload = ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); }; img.src = next; });
-
-downloadBtn.addEventListener('click', ()=>{
-  const data = canvas.toDataURL('image/png');
-  const a = document.createElement('a'); a.href = data; a.download = (currentTopic?currentTopic.name:'drawing') + '.png'; document.body.appendChild(a); a.click(); a.remove();
-});
-
-// pick a random topic based on level
-function pickTopic(level){
-  const arr = TOPICS[level];
-  return arr[Math.floor(Math.random()*arr.length)];
-}
-
-newBtn.addEventListener('click', ()=>{ currentTopic = pickTopic(levelSelect.value); referenceImg.src = currentTopic.src; topicName.textContent = currentTopic.name; topicDiff.textContent = levelSelect.value; referenceBox.style.display='block'; scoreDisplay.textContent='—'; progressBar.style.width='0%'; setCanvasDefaults(); pushHistory(); });
-
-// start round: show reference for a few seconds, then hide and begin timer
-startBtn.addEventListener('click', async ()=>{
-  if(!currentTopic){ newBtn.click(); }
-  if(modeSelect.value === 'local'){
-    // local multiplayer: announce current drawer
-    alert(`Player ${playerTurn}'s turn to draw. When timer ends, switch player.`);
-  }
-  // show reference for preShowSeconds, then hide
-  referenceBox.style.display='block';
-  let showing = preShowSeconds;
-  startBtn.disabled = true; newBtn.disabled = true; levelSelect.disabled=true; modeSelect.disabled=true;
-  const preInt = setInterval(()=>{ startBtn.textContent = `Starting in ${showing}s`; showing--; if(showing<0){ clearInterval(preInt); referenceBox.style.display='none'; beginTimer(); startBtn.textContent='Round in progress'; } },1000);
-  // if P2P, send topic to peer
-  if(p2p && p2p.dc && p2p.dc.readyState==='open') sendP2P({type:'topic', topic: currentTopic, level: levelSelect.value});
-});
-
-function beginTimer(){
-  timeLeft = 90;
-  updateTimerDisplay();
-  timer = setInterval(()=>{ timeLeft--; updateTimerDisplay(); if(timeLeft<=0){ clearInterval(timer); endRound(); } },1000);
-}
-
-function updateTimerDisplay(){
-  const m = Math.floor(timeLeft/60).toString().padStart(2,'0');
-  const s = (timeLeft%60).toString().padStart(2,'0');
-  timerDisplay.textContent = `${m}:${s}`;
-  // small visual progress
-  const pct = ((90-timeLeft)/90)*100;
-  progressBar.style.width = pct + '%';
-}
-
-// End round: compare the drawing to the hidden reference image
-async function endRound(){
-  startBtn.disabled=false; newBtn.disabled=false; levelSelect.disabled=false; modeSelect.disabled=false; startBtn.textContent='Start Round (1:30)';
-
-  // compute similarity
-  scoreDisplay.textContent='Scoring...';
-  try{
-    const score = await computeSimilarity(canvas, currentTopic.src);
-    const percent = Math.round(score*100);
-    scoreDisplay.textContent = percent + '%';
-    progressBar.style.width = percent + '%';
-    const rating = percent >= 70 ? 'Excellent' : percent>=50 ? 'Good' : percent>=30 ? 'Fair' : 'Poor';
-    const node = document.createElement('div'); node.style.marginTop='8px'; node.innerHTML = `<div class='rating'>${rating}</div><div style='font-size:13px;color:#3b5666'>${getFeedback(percent)}</div>`;
-    const existing = document.querySelector('.panel .feedback'); if(existing) existing.remove();
-    node.className='feedback'; document.querySelector('.panel').appendChild(node);
-
-    // in local multiplayer, rotate turn
-    if(modeSelect.value==='local'){
-      playerTurn = playerTurn===1?2:1;
-      alert(`Round ended. Player ${playerTurn}'s turn next.`);
+    function startDrawing(e) {
+      drawing = true;
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+      paths.push([{ x: e.offsetX, y: e.offsetY }]);
     }
 
-    // in p2p mode, send final image and score
-    if(p2p && p2p.dc && p2p.dc.readyState==='open'){
-      const data = canvas.toDataURL('image/png'); sendP2P({type:'result', score:percent, img:data});
+    function draw(e) {
+      if (!drawing) return;
+      const brushSize = document.getElementById("brush-size").value;
+      const brushOpacity = document.getElementById("brush-opacity").value;
+
+      ctx.lineWidth = brushSize;
+      ctx.strokeStyle = `rgba(0,0,0,${brushOpacity})`;
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+
+      paths[paths.length - 1].push({ x: e.offsetX, y: e.offsetY });
     }
 
-  }catch(err){ scoreDisplay.textContent='Error'; console.error(err); }
-}
-
-function getFeedback(pct){
-  if(pct>=80) return 'Amazing resemblance — your silhouette and major lines match the reference.';
-  if(pct>=60) return 'Nice! You captured important shapes and edges.';
-  if(pct>=40) return 'Not bad — try focusing on the big outlines first.';
-  return 'Try to draw stronger outlines and distinctive shapes of the monument.';
-}
-
-// similarity algorithm: load reference image, resize both canvases to small size, compute edge maps via Sobel, then IoU-like overlap
-async function computeSimilarity(userCanvas, imageUrl){
-  const SIZE = 256;
-  const refCanvas = document.createElement('canvas'); refCanvas.width = SIZE; refCanvas.height = SIZE; const rctx = refCanvas.getContext('2d');
-  const userSmall = document.createElement('canvas'); userSmall.width = SIZE; userSmall.height = SIZE; const uctx = userSmall.getContext('2d');
-
-  // draw user canvas scaled
-  uctx.fillStyle = '#fff'; uctx.fillRect(0,0,SIZE,SIZE);
-  uctx.drawImage(userCanvas, 0,0,SIZE,SIZE);
-
-  // load reference image
-  const img = await loadImage(imageUrl);
-  const ar = img.width/img.height;
-  const canvasAr = SIZE / SIZE;
-  let dw=SIZE, dh=SIZE, dx=0, dy=0;
-  if(ar>canvasAr){ dh = SIZE; dw = Math.round(SIZE * ar); dx = Math.round((SIZE-dw)/2); } else { dw = SIZE; dh = Math.round(SIZE / ar); dy = Math.round((SIZE-dh)/2); }
-  rctx.fillStyle='#fff'; rctx.fillRect(0,0,SIZE,SIZE);
-  rctx.drawImage(img, dx, dy, dw, dh);
-
-  const refData = rctx.getImageData(0,0,SIZE,SIZE);
-  const userData = uctx.getImageData(0,0,SIZE,SIZE);
-  const refEdges = sobelEdgeMap(refData, SIZE, SIZE);
-  const userEdges = sobelEdgeMap(userData, SIZE, SIZE);
-
-  let inter=0, union=0;
-  for(let i=0;i<refEdges.length;i++){ const r = refEdges[i]; const u = userEdges[i]; if(r||u) union++; if(r&&u) inter++; }
-  const iou = union===0 ? 0 : inter/union;
-  const userCount = userEdges.reduce((a,v)=>a+ (v?1:0),0);
-  const coverage = Math.min(1, userCount / (SIZE*SIZE*0.01));
-  const final = iou * coverage;
-  return final; // 0..1
-}
-
-function loadImage(src){ return new Promise((res,rej)=>{ const img = new Image(); img.crossOrigin='anonymous'; img.onload = ()=>res(img); img.onerror = rej; img.src = src; }); }
-
-function sobelEdgeMap(imageData, w, h){
-  const px = imageData.data; const gray = new Float32Array(w*h); let idx=0; for(let i=0;i<px.length;i+=4){ const r = px[i], g = px[i+1], b = px[i+2]; gray[idx++] = 0.2989*r + 0.5870*g + 0.1140*b; }
-  const gx = [-1,0,1,-2,0,2,-1,0,1]; const gy = [-1,-2,-1,0,0,0,1,2,1]; const out = new Uint8Array(w*h);
-  for(let y=1;y<h-1;y++){ for(let x=1;x<w-1;x++){ let sx=0, sy=0; let k=0; for(let ky=-1;ky<=1;ky++){ for(let kx=-1;kx<=1;kx++){ const val = gray[(y+ky)*w + (x+kx)]; sx += gx[k]*val; sy += gy[k]*val; k++; } } const mag = Math.sqrt(sx*sx + sy*sy); out[y*w+x] = mag > 80 ? 1 : 0; } }
-  return out;
-}
-
-// ------------------ P2P (manual signaling) ------------------
-function createPeerConnection(){
-  const pc = new RTCPeerConnection();
-  const dc = pc.createDataChannel('pictionary');
-  dc.onopen = ()=>{ p2pStatus.textContent = 'P2P status: connected'; };
-  dc.onclose = ()=>{ p2pStatus.textContent = 'P2P status: disconnected'; };
-  dc.onmessage = ev => { try{ const msg = JSON.parse(ev.data); handleP2PMessage(msg); }catch(e){ console.warn('invalid p2p msg',e); } };
-  pc.ondatachannel = e => { const ch = e.channel; ch.onmessage = ev => { try{ const msg = JSON.parse(ev.data); handleP2PMessage(msg); }catch(e){} }; ch.onopen = ()=>{ p2pStatus.textContent='P2P status: connected (peer)'; p2p.dc = ch; };
-  };
-  p2p = { pc, dc };
-  // ICE candidates
-  const candidates = [];
-  pc.onicecandidate = e => { if(e.candidate) { candidates.push(e.candidate); signalingLocal.value = JSON.stringify({sdp: pc.localDescription, candidates}); } else { signalingLocal.value = JSON.stringify({sdp: pc.localDescription, candidates}); } };
-  return p2p;
-}
-
-createOfferBtn.addEventListener('click', async ()=>{
-  try{
-    createPeerConnection();
-    const offer = await p2p.pc.createOffer();
-    await p2p.pc.setLocalDescription(offer);
-    // wait briefly for ICE to gather
-    setTimeout(()=>{ signalingLocal.value = JSON.stringify({sdp: p2p.pc.localDescription}); }, 700);
-    p2pStatus.textContent = 'P2P status: offer created — share the text with peer';
-  }catch(e){ console.error(e); }
-});
-
-acceptRemoteBtn.addEventListener('click', async ()=>{
-  try{
-    const remote = JSON.parse(signalingRemote.value);
-    if(remote.sdp && remote.sdp.type === 'offer'){
-      // answer path
-      createPeerConnection();
-      await p2p.pc.setRemoteDescription(remote.sdp);
-      const answer = await p2p.pc.createAnswer();
-      await p2p.pc.setLocalDescription(answer);
-      signalingLocal.value = JSON.stringify({sdp: p2p.pc.localDescription});
-      p2pStatus.textContent = 'P2P status: answer created — send back to offerer';
-    } else if(remote.sdp && remote.sdp.type === 'answer'){
-      // offerer receives answer
-      if(!p2p) createPeerConnection();
-      await p2p.pc.setRemoteDescription(remote.sdp);
-      p2pStatus.textContent = 'P2P status: connected (answer applied)';
+    function stopDrawing() {
+      drawing = false;
+      ctx.closePath();
     }
-    // if ICE candidates included
-    if(remote.candidates && remote.candidates.length){ for(const c of remote.candidates) try{ await p2p.pc.addIceCandidate(c); }catch(e){} }
-  }catch(e){ alert('Invalid remote data. Paste the JSON your peer shared.'); console.error(e); }
-});
 
-closeP2PBtn.addEventListener('click', ()=>{ if(p2p){ try{ p2p.pc.close(); }catch(e){} p2p=null; p2pStatus.textContent='P2P status: disconnected'; } signalingLocal.value=''; signalingRemote.value=''; });
+    canvas.addEventListener("mousedown", startDrawing);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("mouseup", stopDrawing);
+    canvas.addEventListener("mouseleave", stopDrawing);
 
-function sendP2P(obj){ if(!p2p || !p2p.dc) return; try{ p2p.dc.send(JSON.stringify(obj)); }catch(e){} }
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      paths = [];
+      undone = [];
+    }
 
-function handleP2PMessage(msg){ if(!msg || !msg.type) return; switch(msg.type){
-  case 'begin':
-    // start path with peer settings
-    ctx.beginPath(); ctx.moveTo(msg.x, msg.y); ctx.lineWidth = msg.size; ctx.globalAlpha = msg.opacity; ctx.strokeStyle = msg.erasing ? 'rgba(0,0,0,1)' : msg.color; ctx.globalCompositeOperation = msg.erasing ? 'destination-out' : 'source-over'; break;
-  case 'draw':
-    ctx.lineTo(msg.x, msg.y); ctx.stroke(); break;
-  case 'end':
-    ctx.closePath(); break;
-  case 'topic':
-    // peer selected topic — show preview
-    currentTopic = msg.topic; referenceImg.src = currentTopic.src; topicName.textContent = currentTopic.name; topicDiff.textContent = msg.level; referenceBox.style.display='block'; break;
-  case 'result':
-    // peer finished: show their score in status
-    p2pStatus.textContent = `Peer finished — score ${msg.score}%`; break;
-}
-}
+    function undo() {
+      if (paths.length > 0) {
+        undone.push(paths.pop());
+        redraw();
+      }
+    }
 
-// expose a quick auto-new on load for convenience
-window.addEventListener('load', ()=>{ newBtn.click(); });
+    function redo() {
+      if (undone.length > 0) {
+        paths.push(undone.pop());
+        redraw();
+      }
+    }
 
-</script>
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let path of paths) {
+        ctx.beginPath();
+        for (let i = 0; i < path.length; i++) {
+          const point = path[i];
+          if (i === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    function downloadDrawing() {
+      const link = document.createElement("a");
+      link.download = "drawing.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    function newTopic() {
+      const random = topics[Math.floor(Math.random() * topics.length)];
+      document.getElementById("reference-image").src = random.img;
+      document.getElementById("topic-title").textContent = "Reference — " + random.name;
+    }
+
+    // Fake scoring function
+    function calculateScore(similarity) {
+      let score = Math.round(similarity * 100);
+      if (score < 50) score = 50; // enforce minimum
+      document.getElementById("score-display").textContent = `${score}/100`;
+    }
+
+    // Example: simulate a score update
+    setInterval(() => {
+      let randomSim = Math.random(); // 0-1
+      calculateScore(randomSim);
+    }, 5000);
+
+    // Initialize with a topic
+    newTopic();
+  </script>
 </body>
 </html>
