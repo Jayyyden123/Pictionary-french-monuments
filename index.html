@@ -3,163 +3,259 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pictionary — French Monuments (Name Only)</title>
+<title>Pictionary — French Monuments</title>
 <style>
-:root{--accent:#1f7ed0}
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:18px;background:#f6fbff;color:#0b2433}
-.wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:18px}
-.panel{background:white;border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(20,40,60,.06)}
-h1{margin:0 0 12px;font-size:20px}
-select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;background:transparent;font-size:13px}
-.controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
-.muted{color:#536873;font-size:13px}
-.small{font-size:13px;color:#47606f}
-.score{font-weight:700;font-size:18px}
+  :root{--accent:#1f7ed0}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:18px;background:#f6fbff;color:#0b2433}
+  .wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:18px}
+  .panel{background:white;border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(20,40,60,.06);display:flex;flex-direction:column;}
+  h1{margin:0 0 12px;font-size:20px}
+  select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;background:transparent;font-size:13px}
+  .reference{margin-top:10px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  #drawCanvas{background:#fff;border-radius:8px;border:1px solid #e6eef9;touch-action:none;width:100%;height:100%;}
+  .controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .small{font-size:13px;color:#47606f}
+  .row{display:flex;gap:8px;align-items:center}
+  .right-top{display:flex;justify-content:space-between;align-items:center}
+  button.primary{background:var(--accent);color:white;border:none}
+  .score{font-weight:700;font-size:18px}
+  .hidden{display:none}
 </style>
 </head>
 <body>
 <div style="max-width:1200px;margin:0 auto"><h1>Pictionary — French Monuments</h1></div>
 <div class="wrap">
-<div class="panel">
-<div style="display:flex;justify-content:space-between;align-items:center">
-<div>
-<div class="small">Mode</div>
-<select id="modeSelect">
-<option value="single">Singleplayer</option>
-<option value="local">Local — Pass & Play</option>
-</select>
-</div>
-<div>
-<div class="small">Level</div>
-<select id="levelSelect">
-<option value="easy">Easy</option>
-<option value="medium">Medium</option>
-<option value="hard">Hard</option>
-</select>
-</div>
-</div>
+  <!-- left panel -->
+  <div class="panel" style="flex:1">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="small">Mode</div>
+        <select id="modeSelect">
+          <option value="single">Singleplayer</option>
+          <option value="local">Local — Pass & Play</option>
+        </select>
+      </div>
+      <div>
+        <div class="small">Level</div>
+        <select id="levelSelect">
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+    </div>
 
-<p class="muted" style="margin-top:10px">Monument Name — will hide when round starts</p>
-<div class="reference" id="referenceBox" style="margin-top:10px">
-<div style="margin-top:8px"><strong id="topicName"></strong> · <span id="topicDiff" class="small"></span></div>
-</div>
+    <div class="reference" id="referenceBox" style="margin-top:10px">
+      <div style="margin-top:8px"><strong id="topicName"></strong> · <span id="topicDiff" class="small"></span></div>
+    </div>
 
-<div class="toolbar" style="margin-top:12px">
-<button id="newBtn">New Topic</button>
-<button id="startBtn" class="primary">Start Round (1:30)</button>
-<button id="clearBtn">Clear</button>
-<button id="resetBtn">Reset</button>
-</div>
-</div>
+    <div class="toolbar" style="margin-top:12px">
+      <button id="newBtn">New Topic</button>
+      <button id="startBtn" class="primary">Start Round (1:30)</button>
+      <button id="clearBtn">Clear</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+  </div>
 
-<div class="panel">
-<div class="right-top" style="margin-bottom:12px">
-<div>
-<div class="small">Timer</div>
-<div id="timerDisplay" style="font-size:20px;font-weight:700;color:#2563eb">01:30</div>
-</div>
-<div style="text-align:right">
-<div class="small">Score</div>
-<div id="scoreDisplay" class="score">—/100</div>
-</div>
-</div>
+  <!-- right panel -->
+  <div class="panel" style="flex:1;display:flex;flex-direction:column;">
+    <div class="right-top" style="margin-bottom:12px">
+      <div>
+        <div class="small">Timer</div>
+        <div id="timerDisplay" style="font-size:20px;font-weight:700;color:#2563eb">01:30</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Score</div>
+        <div id="scoreDisplay" class="score">—/100</div>
+      </div>
+    </div>
 
-<canvas id="drawCanvas"></canvas>
+    <div style="flex:1">
+      <canvas id="drawCanvas"></canvas>
+    </div>
 
-<div class="controls" style="margin-top:12px">
-<label>Brush: <input id="brushSize" type="range" min="1" max="60" value="6"></label>
-<label>Opacity: <input id="opacity" type="range" min="0.1" max="1" step="0.1" value="1"></label>
-<label>Color: <input id="colorPicker" type="color" value="#000000"></label>
-<button id="eraserBtn">Eraser</button>
-<button id="penBtn">Pen</button>
-<button id="undoBtn">Undo</button>
-<button id="redoBtn">Redo</button>
-</div>
-</div>
+    <div class="controls" style="margin-top:12px">
+      <label>Brush: <input id="brushSize" type="range" min="1" max="60" value="6"></label>
+      <label>Opacity: <input id="opacity" type="range" min="0.1" max="1" step="0.1" value="1"></label>
+      <label>Color: <input id="colorPicker" type="color" value="#000000"></label>
+      <button id="eraserBtn">Eraser</button>
+      <button id="penBtn">Pen</button>
+      <button id="undoBtn">Undo</button>
+      <button id="redoBtn">Redo</button>
+    </div>
+  </div>
 </div>
 
 <script>
 const TOPICS = {
-easy:[
-{name:'Eiffel Tower'},
-{name:'Arc de Triomphe'},
-{name:'Mont Saint-Michel'}
-],
-medium:[
-{name:'Notre-Dame de Paris'},
-{name:'Louvre Pyramid'},
-{name:'Château de Chambord'}
-],
-hard:[
-{name:'Sainte-Chapelle'},
-{name:'Pont Neuf'},
-{name:'Palace of Versailles'}
-]
+  easy: [
+    { name: 'Eiffel Tower' },
+    { name: 'Arc de Triomphe' },
+    { name: 'Mont Saint-Michel' }
+  ],
+  medium: [
+    { name: 'Notre-Dame de Paris' },
+    { name: 'Louvre Pyramid' },
+    { name: 'Château de Chambord' }
+  ],
+  hard: [
+    { name: 'Sainte-Chapelle' },
+    { name: 'Pont Neuf' },
+    { name: 'Palace of Versailles' }
+  ]
 };
 
-const modeSelect=document.getElementById('modeSelect');
-const levelSelect=document.getElementById('levelSelect');
-const newBtn=document.getElementById('newBtn');
-const startBtn=document.getElementById('startBtn');
-const clearBtn=document.getElementById('clearBtn');
-const resetBtn=document.getElementById('resetBtn');
-const referenceBox=document.getElementById('referenceBox');
-const topicNameEl=document.getElementById('topicName');
-const topicDiffEl=document.getElementById('topicDiff');
-const timerDisplay=document.getElementById('timerDisplay');
-const scoreDisplay=document.getElementById('scoreDisplay');
-const canvas=document.getElementById('drawCanvas');
-const ctx=canvas.getContext('2d');
-const brushSize=document.getElementById('brushSize');
-const opacity=document.getElementById('opacity');
-const colorPicker=document.getElementById('colorPicker');
-const eraserBtn=document.getElementById('eraserBtn');
-const penBtn=document.getElementById('penBtn');
-const undoBtn=document.getElementById('undoBtn');
-const redoBtn=document.getElementById('redoBtn');
+const modeSelect = document.getElementById('modeSelect');
+const levelSelect = document.getElementById('levelSelect');
+const newBtn = document.getElementById('newBtn');
+const startBtn = document.getElementById('startBtn');
+const clearBtn = document.getElementById('clearBtn');
+const resetBtn = document.getElementById('resetBtn');
 
-let dpr=window.devicePixelRatio||1;
+const referenceBox = document.getElementById('referenceBox');
+const topicNameEl = document.getElementById('topicName');
+const topicDiffEl = document.getElementById('topicDiff');
+
+const timerDisplay = document.getElementById('timerDisplay');
+const scoreDisplay = document.getElementById('scoreDisplay');
+
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+const brushSize = document.getElementById('brushSize');
+const opacity = document.getElementById('opacity');
+const colorPicker = document.getElementById('colorPicker');
+const eraserBtn = document.getElementById('eraserBtn');
+const penBtn = document.getElementById('penBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+let dpr = window.devicePixelRatio || 1;
 function resizeCanvas(){
-const rect=canvas.getBoundingClientRect();
-canvas.width=Math.floor(rect.width*dpr);
-canvas.height=Math.floor(rect.height*dpr);
-ctx.setTransform(1,0,0,1,0,0);
-ctx.scale(dpr,dpr);
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
 }
-window.addEventListener('resize',()=>{setTimeout(resizeCanvas,50);});
+window.addEventListener('resize', ()=>{ setTimeout(resizeCanvas,50); });
 setTimeout(resizeCanvas,50);
 
-let history=[],redoStack=[];
-function pushHistory(){try{history.push(canvas.toDataURL());if(history.length>60)history.shift();redoStack=[];}catch(e){}}
-function restoreFromDataURL(dataURL){const img=new Image();img.onload=()=>{ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);ctx.drawImage(img,0,0,canvas.width/dpr,canvas.height/dpr);};img.src=dataURL;}
+let history = [], redoStack = [];
+function pushHistory(){
+  try{ history.push(canvas.toDataURL()); if(history.length>60) history.shift(); redoStack=[]; }catch(e){}
+}
+function restoreFromDataURL(dataURL){
+  const img = new Image();
+  img.onload = ()=>{ ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr); ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); ctx.drawImage(img,0,0,canvas.width/dpr,canvas.height/dpr); };
+  img.src = dataURL;
+}
 
-let drawing=false,erasing=false,started=false,timer=null,timeLeft=90,currentTopic=null;
-ctx.lineCap='round';ctx.lineJoin='round';
-function ptrPos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
-canvas.addEventListener('pointerdown',(e)=>{drawing=true;const p=ptrPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);pushHistory();if(!started){startRoundAuto();}});
-canvas.addEventListener('pointermove',(e)=>{if(!drawing)return;const p=ptrPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle=erasing? 'rgba(0,0,0,1)':colorPicker.value;ctx.lineWidth=brushSize.value;ctx.globalCompositeOperation=erasing?'destination-out':'source-over';ctx.globalAlpha=opacity.value;ctx.stroke();});
-canvas.addEventListener('pointerup',()=>{if(!drawing)return;drawing=false;ctx.closePath();});
-canvas.addEventListener('pointerleave',()=>{if(!drawing)return;drawing=false;ctx.closePath();});
+let drawing=false, erasing=false, started=false, timer=null, timeLeft=90;
+ctx.lineCap='round'; ctx.lineJoin='round';
 
-eraserBtn.addEventListener('click',()=>{erasing=true;eraserBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)';penBtn.style.boxShadow='';});
-penBtn.addEventListener('click',()=>{erasing=false;penBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)';eraserBtn.style.boxShadow='';});
-undoBtn.addEventListener('click',()=>{if(history.length===0)return;const last=history.pop();redoStack.push(canvas.toDataURL());if(history.length===0){ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);}else{restoreFromDataURL(history[history.length-1]);}});
-redoBtn.addEventListener('click',()=>{if(redoStack.length===0)return;const next=redoStack.pop();history.push(canvas.toDataURL());restoreFromDataURL(next);});
-clearBtn.addEventListener('click',()=>{ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);pushHistory();});
-resetBtn.addEventListener('click',()=>{clearInterval(timer);timer=null;started=false;timeLeft=90;updateTimerDisplay();ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);history=[];redoStack=[];referenceBox.style.display='block';scoreDisplay.textContent="—/100";});
+function ptrPos(e){
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
 
-function pickTopic(level){const arr=TOPICS[level]||TOPICS.easy;return arr[Math.floor(Math.random()*arr.length)];}
-function setReference(topic,level){if(!topic)return;currentTopic=topic;topicNameEl.textContent=topic.name;topicDiffEl.textContent=level||levelSelect.value;referenceBox.style.display='block';scoreDisplay.textContent="—/100";}
-newBtn.addEventListener('click',()=>{const t=pickTopic(levelSelect.value);setReference(t,levelSelect.value);pushHistory();});
-levelSelect.addEventListener('change',()=>{const t=pickTopic(levelSelect.value);setReference(t,levelSelect.value);});
+canvas.addEventListener('pointerdown', (e)=>{
+  drawing=true;
+  const p=ptrPos(e);
+  ctx.beginPath(); ctx.moveTo(p.x, p.y);
+  pushHistory();
+  if(!started) startRoundAuto();
+});
+canvas.addEventListener('pointermove', (e)=>{
+  if(!drawing) return;
+  const p=ptrPos(e);
+  ctx.lineTo(p.x,p.y);
+  ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorPicker.value;
+  ctx.lineWidth = brushSize.value;
+  ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+  ctx.globalAlpha = opacity.value;
+  ctx.stroke();
+});
+canvas.addEventListener('pointerup', ()=>{ if(drawing){ drawing=false; ctx.closePath(); } });
+canvas.addEventListener('pointerleave', ()=>{ if(drawing){ drawing=false; ctx.closePath(); } });
 
-function updateTimerDisplay(){const m=Math.floor(timeLeft/60).toString().padStart(2,'0');const s=(timeLeft%60).toString().padStart(2,'0');timerDisplay.textContent=`${m}:${s}`;}
-function startRoundAuto(){if(started)return;started=true;referenceBox.style.display='none';timeLeft=90;updateTimerDisplay();timer=setInterval(()=>{timeLeft--;updateTimerDisplay();if(timeLeft<=0){clearInterval(timer);timer=null;started=false;showScore();}},1000);}
-startBtn.addEventListener('click',()=>{if(!currentTopic){newBtn.click();}referenceBox.style.display='block';startBtn.disabled=true;newBtn.disabled=true;levelSelect.disabled=true;modeSelect.disabled=true;let showcount=6;const pre=setInterval(()=>{startBtn.textContent=`Starting in ${showcount}s`;showcount--;if(showcount<0){clearInterval(pre);startBtn.textContent='Round in progress';referenceBox.style.display='none';startRoundAuto();startBtn.disabled=false;newBtn.disabled=false;levelSelect.disabled=false;modeSelect.disabled=false;}},1000);});
+eraserBtn.addEventListener('click', ()=>{ erasing=true; eraserBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; penBtn.style.boxShadow=''; });
+penBtn.addEventListener('click', ()=>{ erasing=false; penBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; eraserBtn.style.boxShadow=''; });
 
-function showScore(){const score=Math.floor(Math.random()*100)+1;scoreDisplay.textContent=`${score}/100`;referenceBox.style.display='block';}
+undoBtn.addEventListener('click', ()=>{
+  if(history.length===0) return;
+  const last = history.pop();
+  redoStack.push(canvas.toDataURL());
+  if(history.length===0){
+    ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+  } else {
+    restoreFromDataURL(history[history.length-1]);
+  }
+});
 
-window.addEventListener('load',()=>{const t=pickTopic(levelSelect.value);setReference(t,levelSelect.value);pushHistory();updateTimerDisplay();});
+redoBtn.addEventListener('click', ()=>{
+  if(redoStack.length===0) return;
+  const next = redoStack.pop();
+  history.push(canvas.toDataURL());
+  restoreFromDataURL(next);
+});
+
+clearBtn.addEventListener('click', ()=>{ ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); pushHistory(); updateScoreDisplay(null); });
+resetBtn.addEventListener('click', ()=>{ clearInterval(timer); timer=null; started=false; timeLeft=90; updateTimerDisplay(); ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); history=[]; redoStack=[]; updateScoreDisplay(null); });
+
+let currentTopic = null;
+function pickTopic(level){
+  const arr = TOPICS[level] || TOPICS.easy;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+function setReference(topic, level){
+  if(!topic) return;
+  currentTopic = topic;
+  topicNameEl.textContent = topic.name;
+  topicDiffEl.textContent = level || levelSelect.value;
+  updateScoreDisplay(null);
+}
+newBtn.addEventListener('click', ()=>{ const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); pushHistory(); });
+levelSelect.addEventListener('change', ()=>{ const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); });
+
+function updateTimerDisplay(){
+  const m = Math.floor(timeLeft/60).toString().padStart(2,'0');
+  const s = (timeLeft%60).toString().padStart(2,'0');
+  timerDisplay.textContent = `${m}:${s}`;
+}
+function startRoundAuto(){
+  if(started) return;
+  started = true;
+  timeLeft = 90;
+  updateTimerDisplay();
+  timer = setInterval(()=>{
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft <= 0){
+      clearInterval(timer); timer = null; started = false; showScore();
+    }
+  }, 1000);
+}
+startBtn.addEventListener('click', ()=>{
+  if(!currentTopic){ newBtn.click(); }
+  startRoundAuto();
+});
+
+function showScore(){
+  const percent = 50 + Math.floor(Math.random()*51);
+  updateScoreDisplay(percent);
+}
+function updateScoreDisplay(percent){
+  if(percent===null||percent===undefined){ scoreDisplay.textContent = '—/100'; }
+  else{ scoreDisplay.textContent = `${percent}/100`; }
+}
+
+window.addEventListener('load', ()=>{
+  const t = pickTopic(levelSelect.value);
+  setReference(t, levelSelect.value);
+  pushHistory();
+  resizeCanvas();
+});
 </script>
 </body>
 </html>
