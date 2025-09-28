@@ -1,236 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pictionary — French Monuments</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f5f8fc;
       display: flex;
       flex-direction: column;
       align-items: center;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 20px;
     }
-
-    header {
-      background: #1e293b;
-      color: white;
-      width: 100%;
-      padding: 15px;
-      text-align: center;
-      font-size: 1.4rem;
-      font-weight: bold;
+    h1 {
+      margin-bottom: 20px;
     }
-
     .container {
       display: flex;
-      width: 95%;
-      margin-top: 20px;
       gap: 20px;
+      width: 95%;
+      max-width: 1200px;
     }
-
-    .left-panel {
+    .reference, .drawing {
       flex: 1;
       background: white;
       padding: 15px;
       border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-
-    .reference-img {
-      width: 100%;
-      height: auto;       /* Let image resize naturally */
-      max-height: 300px;  /* Optional limit */
-      object-fit: contain;
-      border-radius: 8px;
-      background: #f0f0f0;
+    .reference img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
       margin-bottom: 10px;
     }
-
-    .buttons {
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    button {
-      padding: 8px 14px;
-      background: #2563eb;
-      border: none;
-      color: white;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #1e40af;
-    }
-
-    .right-panel {
-      flex: 2;
-      background: white;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    #drawing-canvas {
+    canvas {
       border: 2px solid #ccc;
-      border-radius: 8px;
-      background: #fff;
+      border-radius: 10px;
       width: 100%;
       height: 500px;
       cursor: crosshair;
     }
-
     .controls {
       margin-top: 10px;
       display: flex;
       gap: 10px;
-      align-items: center;
+      justify-content: center;
     }
-
-    .score-box {
-      margin-top: 10px;
-      font-size: 1.2rem;
+    button {
+      padding: 8px 14px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    #score {
       font-weight: bold;
+      margin-top: 10px;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <header>Pictionary — French Monuments</header>
-
+  <h1>Pictionary — French Monuments</h1>
   <div class="container">
-    <div class="left-panel">
-      <h3 id="topic-title">Reference (preview)</h3>
-      <img id="reference-image" class="reference-img" src="" alt="Reference Monument" />
-      <div class="buttons">
+    <div class="reference">
+      <h3 id="reference-title">Reference — </h3>
+      <img id="reference-img" src="" alt="Reference Monument">
+      <div class="controls">
         <button onclick="newTopic()">New Topic</button>
         <button onclick="clearCanvas()">Clear</button>
       </div>
     </div>
-
-    <div class="right-panel">
-      <canvas id="drawing-canvas"></canvas>
+    <div class="drawing">
+      <canvas id="canvas"></canvas>
       <div class="controls">
-        <label>Brush: <input type="range" id="brush-size" min="1" max="20" value="3" /></label>
-        <label>Opacity: <input type="range" id="brush-opacity" min="0.1" max="1" step="0.1" value="1" /></label>
+        <label>Brush: <input type="range" id="brush-size" min="1" max="20" value="3"></label>
+        <label>Opacity: <input type="range" id="brush-opacity" min="0.1" max="1" step="0.1" value="1"></label>
         <button onclick="undo()">Undo</button>
         <button onclick="redo()">Redo</button>
       </div>
-      <div class="score-box">
-        Score: <span id="score-display">50/100</span>
-      </div>
+      <p id="score">Score: 50/100</p>
     </div>
   </div>
 
   <script>
-    const canvas = document.getElementById("drawing-canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    let drawing = false;
-    let paths = [];
-    let undone = [];
-
     const topics = [
-      { name: "Eiffel Tower", img: "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg" },
-      { name: "Louvre Museum", img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Louvre_Museum_Wikimedia_Commons.jpg" },
-      { name: "Arc de Triomphe", img: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg" },
-      { name: "Notre-Dame Cathedral", img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre_Dame_de_Paris_2013.jpg" },
-      { name: "Palace of Versailles", img: "https://upload.wikimedia.org/wikipedia/commons/4/43/Palace_of_Versailles_West_facade.jpg" }
+      { name: "Eiffel Tower", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/800px-Tour_Eiffel_Wikimedia_Commons.jpg" },
+      { name: "Louvre Museum", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Louvre_Museum_Wikimedia_Commons.jpg/800px-Louvre_Museum_Wikimedia_Commons.jpg" },
+      { name: "Palace of Versailles", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Versailles_Palace_Wikimedia_Commons.jpg/800px-Versailles_Palace_Wikimedia_Commons.jpg" },
+      { name: "Mont Saint-Michel", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Mont_Saint-Michel_Wikimedia_Commons.jpg/800px-Mont_Saint-Michel_Wikimedia_Commons.jpg" },
+      { name: "Arc de Triomphe", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Arc_de_Triomphe_Wikimedia_Commons.jpg/800px-Arc_de_Triomphe_Wikimedia_Commons.jpg" }
     ];
 
-    function startDrawing(e) {
-      drawing = true;
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
-      paths.push([{ x: e.offsetX, y: e.offsetY }]);
+    let canvas = document.getElementById("canvas");
+    let ctx = canvas.getContext("2d");
+    let drawing = false;
+    let history = [], redoStack = [];
+
+    function resizeCanvas() {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
     }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    canvas.addEventListener("mousedown", () => { drawing = true; ctx.beginPath(); });
+    canvas.addEventListener("mouseup", () => { drawing = false; history.push(ctx.getImageData(0,0,canvas.width,canvas.height)); redoStack=[]; });
+    canvas.addEventListener("mousemove", draw);
 
     function draw(e) {
       if (!drawing) return;
-      const brushSize = document.getElementById("brush-size").value;
-      const brushOpacity = document.getElementById("brush-opacity").value;
-
-      ctx.lineWidth = brushSize;
-      ctx.strokeStyle = `rgba(0,0,0,${brushOpacity})`;
+      ctx.lineWidth = document.getElementById("brush-size").value;
+      ctx.globalAlpha = document.getElementById("brush-opacity").value;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "black";
       ctx.lineTo(e.offsetX, e.offsetY);
       ctx.stroke();
-
-      paths[paths.length - 1].push({ x: e.offsetX, y: e.offsetY });
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+      updateScore();
     }
-
-    function stopDrawing() {
-      drawing = false;
-      ctx.closePath();
-    }
-
-    canvas.addEventListener("mousedown", startDrawing);
-    canvas.addEventListener("mousemove", draw);
-    canvas.addEventListener("mouseup", stopDrawing);
-    canvas.addEventListener("mouseleave", stopDrawing);
 
     function clearCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      paths = [];
-      undone = [];
+      updateScore(true);
     }
 
     function undo() {
-      if (paths.length > 0) {
-        undone.push(paths.pop());
-        redraw();
+      if (history.length > 0) {
+        redoStack.push(history.pop());
+        if (history.length > 0) {
+          ctx.putImageData(history[history.length - 1], 0, 0);
+        } else {
+          clearCanvas();
+        }
       }
     }
 
     function redo() {
-      if (undone.length > 0) {
-        paths.push(undone.pop());
-        redraw();
-      }
-    }
-
-    function redraw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let path of paths) {
-        ctx.beginPath();
-        for (let i = 0; i < path.length; i++) {
-          const point = path[i];
-          if (i === 0) ctx.moveTo(point.x, point.y);
-          else ctx.lineTo(point.x, point.y);
-        }
-        ctx.stroke();
+      if (redoStack.length > 0) {
+        let data = redoStack.pop();
+        history.push(data);
+        ctx.putImageData(data, 0, 0);
       }
     }
 
     function newTopic() {
       const random = topics[Math.floor(Math.random() * topics.length)];
-      document.getElementById("reference-image").src = random.img;
-      document.getElementById("topic-title").textContent = "Reference — " + random.name;
+      document.getElementById("reference-title").innerText = "Reference — " + random.name;
+      document.getElementById("reference-img").src = random.img;
+      clearCanvas();
     }
 
-    // Fake scoring function
-    function calculateScore(similarity) {
-      let score = Math.round(similarity * 100);
-      if (score < 50) score = 50;
-      document.getElementById("score-display").textContent = `${score}/100`;
+    function updateScore(reset = false) {
+      let score = reset ? 50 : Math.min(100, 50 + Math.floor(Math.random() * 51));
+      document.getElementById("score").innerText = "Score: " + score + "/100";
     }
 
-    setInterval(() => {
-      let randomSim = Math.random();
-      calculateScore(randomSim);
-    }, 5000);
-
-    newTopic();
+    newTopic(); // Load first topic
   </script>
 </body>
 </html>
