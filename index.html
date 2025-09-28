@@ -42,7 +42,8 @@
 
     .reference-img {
       width: 100%;
-      height: 250px;
+      height: auto;       /* Let image resize naturally */
+      max-height: 300px;  /* Optional limit */
       object-fit: contain;
       border-radius: 8px;
       background: #f0f0f0;
@@ -113,7 +114,6 @@
       <div class="buttons">
         <button onclick="newTopic()">New Topic</button>
         <button onclick="clearCanvas()">Clear</button>
-        <button onclick="downloadDrawing()">Download</button>
       </div>
     </div>
 
@@ -142,26 +142,11 @@
     let undone = [];
 
     const topics = [
-      {
-        name: "Eiffel Tower",
-        img: "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg"
-      },
-      {
-        name: "Louvre Museum",
-        img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Louvre_Museum_Wikimedia_Commons.jpg"
-      },
-      {
-        name: "Arc de Triomphe",
-        img: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg"
-      },
-      {
-        name: "Notre-Dame Cathedral",
-        img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre_Dame_de_Paris_2013.jpg"
-      },
-      {
-        name: "Palace of Versailles",
-        img: "https://upload.wikimedia.org/wikipedia/commons/4/43/Palace_of_Versailles_West_facade.jpg"
-      }
+      { name: "Eiffel Tower", img: "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg" },
+      { name: "Louvre Museum", img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Louvre_Museum_Wikimedia_Commons.jpg" },
+      { name: "Arc de Triomphe", img: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg" },
+      { name: "Notre-Dame Cathedral", img: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre_Dame_de_Paris_2013.jpg" },
+      { name: "Palace of Versailles", img: "https://upload.wikimedia.org/wikipedia/commons/4/43/Palace_of_Versailles_West_facade.jpg" }
     ];
 
     function startDrawing(e) {
@@ -227,13 +212,6 @@
       }
     }
 
-    function downloadDrawing() {
-      const link = document.createElement("a");
-      link.download = "drawing.png";
-      link.href = canvas.toDataURL();
-      link.click();
-    }
-
     function newTopic() {
       const random = topics[Math.floor(Math.random() * topics.length)];
       document.getElementById("reference-image").src = random.img;
@@ -243,17 +221,15 @@
     // Fake scoring function
     function calculateScore(similarity) {
       let score = Math.round(similarity * 100);
-      if (score < 50) score = 50; // enforce minimum
+      if (score < 50) score = 50;
       document.getElementById("score-display").textContent = `${score}/100`;
     }
 
-    // Example: simulate a score update
     setInterval(() => {
-      let randomSim = Math.random(); // 0-1
+      let randomSim = Math.random();
       calculateScore(randomSim);
     }, 5000);
 
-    // Initialize with a topic
     newTopic();
   </script>
 </body>
