@@ -1,151 +1,575 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pictionary — French Monuments</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-    }
-    .container {
-      display: flex;
-      justify-content: space-between;
-    }
-    .reference {
-      width: 40%;
-    }
-    .reference img {
-      width: 100%;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
-    .canvas-container {
-      width: 55%;
-    }
-    canvas {
-      border: 2px solid #000;
-      width: 100%;
-      height: 400px;
-      background-color: white;
-    }
-    .controls {
-      margin-top: 10px;
-    }
-    .score {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    .timer {
-      font-size: 18px;
-      margin-top: 5px;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pictionary — French Monuments (1v1 + Auto-timer + Reset)</title>
+<style>
+  :root{--accent:#1f7ed0}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:18px;background:#f6fbff;color:#0b2433}
+  .wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:18px}
+  .panel{background:white;border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(20,40,60,.06)}
+  h1{margin:0 0 12px;font-size:20px}
+  select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;background:transparent;font-size:13px}
+  .reference img{width:100%;height:auto;border-radius:8px;object-fit:contain;background:#f6f8fb}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  #drawCanvas{background:#fff;border-radius:8px;border:1px solid #e6eef9;touch-action:none;width:100%;height:540px}
+  .controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .meter{height:12px;background:#eef6fb;border-radius:999px;overflow:hidden}
+  .meter > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#56c2f5);width:0}
+  .muted{color:#536873;font-size:13px}
+  .small{font-size:13px;color:#47606f}
+  .p2p-txt{font-family:monospace;font-size:12px;height:110px;resize:vertical;width:100%}
+  .row{display:flex;gap:8px;align-items:center}
+  .right-top{display:flex;justify-content:space-between;align-items:center}
+  button.primary{background:var(--accent);color:white;border:none}
+  .score{font-weight:700;font-size:18px}
+  .hidden{display:none}
+</style>
 </head>
 <body>
-  <h1>Pictionary — French Monuments</h1>
-  <div class="container">
-    <!-- Reference Section -->
-    <div class="reference">
-      <p id="referenceTitle">Reference — Eiffel Tower</p>
-      <img id="referenceImage" src="images/eiffel.jpg" alt="Reference Monument">
-      <p id="referenceDifficulty">Difficulty: easy</p>
-      <div class="controls">
-        <button onclick="newTopic()">New Topic</button>
-        <button onclick="startRound()">Start Round (1:30)</button>
-        <button onclick="resetGame()">Reset</button>
+<div style="max-width:1200px;margin:0 auto"><h1>Pictionary — French Monuments</h1></div>
+<div class="wrap">
+  <!-- left panel -->
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="small">Mode</div>
+        <select id="modeSelect">
+          <option value="single">Singleplayer</option>
+          <option value="local">Local — Pass & Play</option>
+          <option value="p2p">1v1 Online (manual P2P)</option>
+        </select>
+      </div>
+      <div>
+        <div class="small">Level</div>
+        <select id="levelSelect">
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
       </div>
     </div>
 
-    <!-- Drawing Section -->
-    <div class="canvas-container">
-      <canvas id="drawingCanvas"></canvas>
-      <div class="controls">
-        <label>Brush: <input type="range" id="brushSize" min="1" max="20" value="2"></label>
-        <label>Opacity: <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="1"></label>
+    <p class="muted" style="margin-top:10px">Reference (preview) — will hide when the round starts</p>
+    <div class="reference" id="referenceBox" style="margin-top:10px">
+      <img id="referenceImg" src="" alt="reference"/>
+      <div style="margin-top:8px"><strong id="topicName"></strong> · <span id="topicDiff" class="small"></span></div>
+    </div>
+
+    <div class="toolbar" style="margin-top:12px">
+      <button id="newBtn">New Topic (show pic)</button>
+      <button id="startBtn" class="primary">Start Round (1:30)</button>
+      <button id="clearBtn">Clear</button>
+      <button id="resetBtn">Reset (erase & reset timer)</button>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="small">Timer color</div>
+      <select id="timerColor">
+        <option value="#e11d48">Red</option>
+        <option value="#10b981">Green</option>
+        <option value="#2563eb" selected>Blue</option>
+        <option value="#f59e0b">Yellow</option>
+      </select>
+    </div>
+
+    <div style="margin-top:12px" class="muted small">
+      <div style="font-weight:700;margin-bottom:6px">Online / P2P (manual signaling)</div>
+      <div>Use these to connect: create offer, share it with friend, they paste it into remote box and create answer back.</div>
+      <textarea id="signalingLocal" class="p2p-txt" placeholder="Local offer / answer" readonly></textarea>
+      <textarea id="signalingRemote" class="p2p-txt" placeholder="Paste remote offer / answer here"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="createOfferBtn">Create Offer</button>
+        <button id="acceptRemoteBtn">Accept Remote (Paste & Apply)</button>
+        <button id="closeP2PBtn">Close P2P</button>
       </div>
-      <p id="timer" class="timer">Time: 1:30</p>
-      <p id="score" class="score">Score: 0/100</p>
+      <div id="p2pStatus" class="small" style="margin-top:8px">P2P status: disconnected</div>
     </div>
   </div>
 
-  <script>
-    // Topics (make sure images exist in /images folder)
-    const topics = [
-      { name: "Eiffel Tower", difficulty: "easy", img: "images/eiffel.jpg" },
-      { name: "Louvre Museum", difficulty: "medium", img: "images/louvre.jpg" },
-      { name: "Arc de Triomphe", difficulty: "easy", img: "images/arc.jpg" },
-      { name: "Palace of Versailles", difficulty: "hard", img: "images/versailles.jpg" }
-    ];
+  <!-- right panel -->
+  <div class="panel">
+    <div class="right-top" style="margin-bottom:12px">
+      <div>
+        <div class="small">Timer</div>
+        <div id="timerDisplay" style="font-size:20px;font-weight:700;color:#2563eb">01:30</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Score</div>
+        <div id="scoreDisplay" class="score">—/100</div>
+      </div>
+    </div>
 
-    let timerInterval;
-    let timeLeft = 90;
+    <canvas id="drawCanvas"></canvas>
 
-    // Canvas Setup
-    const canvas = document.getElementById("drawingCanvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = canvas.offsetWidth;
-    canvas.height = 400;
+    <div class="controls" style="margin-top:12px">
+      <label>Brush: <input id="brushSize" type="range" min="1" max="60" value="6"></label>
+      <label>Opacity: <input id="opacity" type="range" min="0.1" max="1" step="0.1" value="1"></label>
+      <label>Color: <input id="colorPicker" type="color" value="#000000"></label>
+      <button id="eraserBtn">Eraser</button>
+      <button id="penBtn">Pen</button>
+      <button id="undoBtn">Undo</button>
+      <button id="redoBtn">Redo</button>
+    </div>
 
-    let drawing = false;
-    canvas.addEventListener("mousedown", () => drawing = true);
-    canvas.addEventListener("mouseup", () => drawing = false);
-    canvas.addEventListener("mousemove", draw);
+    <div style="margin-top:12px">
+      <div class="meter" aria-hidden><i id="progressBar"></i></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><small>50/100 — Minimum</small><small>100/100 — Perfect</small></div>
+    </div>
+  </div>
+</div>
 
-    function draw(e) {
-      if (!drawing) return;
-      ctx.lineWidth = document.getElementById("brushSize").value;
-      ctx.globalAlpha = document.getElementById("opacity").value;
-      ctx.lineCap = "round";
-      ctx.strokeStyle = "black";
-      ctx.lineTo(e.offsetX, e.offsetY);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
+<script>
+/* ---------------- Topics (using Wikimedia thumbs for stability) ---------------- */
+const TOPICS = {
+  easy: [
+    { name: 'Eiffel Tower', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/1200px-Tour_Eiffel_Wikimedia_Commons.jpg' },
+    { name: 'Arc de Triomphe', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Arc_de_Triomphe_Wikimedia_Commons.jpg/1200px-Arc_de_Triomphe_Wikimedia_Commons.jpg' },
+    { name: 'Mont Saint-Michel', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Mont_Saint-Michel_Wikimedia_Commons.jpg/1200px-Mont_Saint-Michel_Wikimedia_Commons.jpg' }
+  ],
+  medium: [
+    { name: 'Notre-Dame de Paris', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Notre_Dame_de_Paris_2013.jpg/1200px-Notre_Dame_de_Paris_2013.jpg' },
+    { name: 'Louvre Pyramid', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Louvre_Museum_Wikimedia_Commons.jpg/1200px-Louvre_Museum_Wikimedia_Commons.jpg' },
+    { name: 'Château de Chambord', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Chateau_de_Chambord.jpg/1200px-Chateau_de_Chambord.jpg' }
+  ],
+  hard: [
+    { name: 'Sainte-Chapelle', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Sainte-Chapelle_interior.jpg/1200px-Sainte-Chapelle_interior.jpg' },
+    { name: 'Pont Neuf', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Pont_Neuf%2C_Paris%2C_2014.jpg/1200px-Pont_Neuf%2C_Paris%2C_2014.jpg' },
+    { name: 'Palace of Versailles', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Versailles_Palace_Wikimedia_Commons.jpg/1200px-Versailles_Palace_Wikimedia_Commons.jpg' }
+  ]
+};
+
+/* ---------------- DOM ---------------- */
+const modeSelect = document.getElementById('modeSelect');
+const levelSelect = document.getElementById('levelSelect');
+const newBtn = document.getElementById('newBtn');
+const startBtn = document.getElementById('startBtn');
+const clearBtn = document.getElementById('clearBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+const referenceBox = document.getElementById('referenceBox');
+const referenceImg = document.getElementById('referenceImg');
+const topicNameEl = document.getElementById('topicName');
+const topicDiffEl = document.getElementById('topicDiff');
+
+const timerDisplay = document.getElementById('timerDisplay');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const progressBar = document.getElementById('progressBar');
+const timerColor = document.getElementById('timerColor');
+
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+const brushSize = document.getElementById('brushSize');
+const opacity = document.getElementById('opacity');
+const colorPicker = document.getElementById('colorPicker');
+const eraserBtn = document.getElementById('eraserBtn');
+const penBtn = document.getElementById('penBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+const signalingLocal = document.getElementById('signalingLocal');
+const signalingRemote = document.getElementById('signalingRemote');
+const createOfferBtn = document.getElementById('createOfferBtn');
+const acceptRemoteBtn = document.getElementById('acceptRemoteBtn');
+const closeP2PBtn = document.getElementById('closeP2PBtn');
+const p2pStatus = document.getElementById('p2pStatus');
+
+/* ---------------- Canvas + history ---------------- */
+let dpr = window.devicePixelRatio || 1;
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  // Reset transforms then scale so we draw in CSS pixels
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+}
+window.addEventListener('resize', ()=>{ setTimeout(resizeCanvas,50); });
+setTimeout(resizeCanvas,50);
+
+let history = [], redoStack = [];
+function pushHistory(){
+  try{ history.push(canvas.toDataURL()); if(history.length>60) history.shift(); redoStack=[]; }catch(e){}
+}
+function restoreFromDataURL(dataURL){
+  const img = new Image();
+  img.onload = ()=>{ ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr); ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); ctx.drawImage(img,0,0,canvas.width/dpr,canvas.height/dpr); };
+  img.src = dataURL;
+}
+
+/* ---------------- Drawing state ---------------- */
+let drawing=false, erasing=false, started=false, timer=null, timeLeft=90;
+ctx.lineCap='round'; ctx.lineJoin='round';
+
+/* pointer helpers */
+function ptrPos(e){ const r=canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+/* drawing events */
+canvas.addEventListener('pointerdown', (e)=>{
+  // begin draw
+  drawing=true;
+  const p=ptrPos(e);
+  ctx.beginPath(); ctx.moveTo(p.x, p.y);
+  pushHistory();
+  // start timer on first stroke if not started
+  if(!started) {
+    startRoundAuto();
+    // broadcast start to peer if P2P
+    if(p2p && p2p.dc && p2p.dc.readyState==='open') sendP2P({type:'start'});
+  }
+  // send begin
+  sendP2P({type:'begin', x:p.x, y:p.y, color: colorPicker.value, size: brushSize.value, opacity: opacity.value, erasing});
+});
+canvas.addEventListener('pointermove', (e)=>{
+  if(!drawing) return;
+  const p=ptrPos(e);
+  ctx.lineTo(p.x,p.y);
+  ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorPicker.value;
+  ctx.lineWidth = brushSize.value;
+  ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+  ctx.globalAlpha = opacity.value;
+  ctx.stroke();
+  sendP2P({type:'draw', x:p.x, y:p.y});
+});
+canvas.addEventListener('pointerup', ()=>{
+  if(!drawing) return;
+  drawing=false; ctx.closePath();
+  sendP2P({type:'end'});
+});
+canvas.addEventListener('pointerleave', ()=>{
+  if(!drawing) return;
+  drawing=false; ctx.closePath();
+  sendP2P({type:'end'});
+});
+
+/* ---------------- Tools ---------------- */
+eraserBtn.addEventListener('click', ()=>{ erasing=true; eraserBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; penBtn.style.boxShadow=''; });
+penBtn.addEventListener('click', ()=>{ erasing=false; penBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; eraserBtn.style.boxShadow=''; });
+
+undoBtn.addEventListener('click', ()=>{
+  if(history.length===0) return;
+  const last = history.pop();
+  redoStack.push(canvas.toDataURL());
+  if(history.length===0){
+    ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+  } else {
+    restoreFromDataURL(history[history.length-1]);
+  }
+});
+
+redoBtn.addEventListener('click', ()=>{
+  if(redoStack.length===0) return;
+  const next = redoStack.pop();
+  history.push(canvas.toDataURL());
+  restoreFromDataURL(next);
+});
+
+clearBtn.addEventListener('click', ()=>{ ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); pushHistory(); updateScoreDisplay(null); });
+
+resetBtn.addEventListener('click', ()=>{
+  // erase drawings and reset timer
+  clearInterval(timer); timer=null; started=false; timeLeft=90; updateTimerDisplay();
+  ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+  history=[]; redoStack=[];
+  updateScoreDisplay(null);
+  // show reference again
+  referenceBox.style.display='block';
+  // inform peer
+  if(p2p && p2p.dc && p2p.dc.readyState==='open') sendP2P({type:'reset'});
+});
+
+/* ---------------- Topics + UI ---------------- */
+let currentTopic = null;
+function pickTopic(level){
+  const arr = TOPICS[level] || TOPICS.easy;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+function setReference(topic, level){
+  if(!topic) return;
+  currentTopic = topic;
+  referenceImg.src = topic.src;
+  topicNameEl.textContent = topic.name;
+  topicDiffEl.textContent = level || levelSelect.value;
+  referenceBox.style.display = 'block';
+  updateScoreDisplay(null);
+}
+newBtn.addEventListener('click', ()=>{
+  const t = pickTopic(levelSelect.value);
+  setReference(t, levelSelect.value);
+  pushHistory();
+  if(p2p && p2p.dc && p2p.dc.readyState==='open'){
+    sendP2P({type:'topic', topic: t, level: levelSelect.value});
+  }
+});
+
+// change difficulty -> immediately pick a topic and show it
+levelSelect.addEventListener('change', ()=>{
+  const t = pickTopic(levelSelect.value);
+  setReference(t, levelSelect.value);
+});
+
+/* image fallback (if thumb blocked - avoid broken icon) */
+referenceImg.addEventListener('error', ()=>{
+  referenceImg.style.display='none';
+  // optionally set a simple placeholder background
+  referenceImg.alt = 'image not available';
+});
+
+/* ---------------- Timer logic ---------------- */
+function updateTimerDisplay(){
+  const m = Math.floor(timeLeft/60).toString().padStart(2,'0');
+  const s = (timeLeft%60).toString().padStart(2,'0');
+  timerDisplay.textContent = `${m}:${s}`;
+  timerDisplay.style.color = timerColor.value;
+  const pct = ((90 - timeLeft)/90) * 100;
+  progressBar.style.width = pct + '%';
+}
+function startRoundAuto(){
+  if(started) return;
+  started = true;
+  // hide reference when timer begins
+  referenceBox.style.display = 'none';
+  timeLeft = 90;
+  updateTimerDisplay();
+  timer = setInterval(()=>{
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft <= 0){
+      clearInterval(timer); timer = null; started = false; endRound();
     }
-
-    function newTopic() {
-      const random = topics[Math.floor(Math.random() * topics.length)];
-      document.getElementById("referenceTitle").innerText = "Reference — " + random.name;
-      document.getElementById("referenceDifficulty").innerText = "Difficulty: " + random.difficulty;
-      document.getElementById("referenceImage").src = random.img;
+  }, 1000);
+}
+// Start button also triggers (pre-show then auto-start)
+startBtn.addEventListener('click', ()=>{
+  if(!currentTopic){ newBtn.click(); }
+  // show reference for 6s then hide and start
+  referenceBox.style.display='block';
+  startBtn.disabled=true; newBtn.disabled=true; levelSelect.disabled=true; modeSelect.disabled=true;
+  let showcount = 6;
+  const pre = setInterval(()=>{
+    startBtn.textContent = `Starting in ${showcount}s`;
+    showcount--;
+    if(showcount < 0){
+      clearInterval(pre);
+      startBtn.textContent = 'Round in progress';
+      referenceBox.style.display='none';
+      startRoundAuto();
+      startBtn.disabled = false; newBtn.disabled=false; levelSelect.disabled=false; modeSelect.disabled=false;
     }
+  }, 1000);
+});
 
-    function startRound() {
-      clearInterval(timerInterval);
-      timeLeft = 90;
-      document.getElementById("timer").innerText = "Time: 1:30";
-      timerInterval = setInterval(updateTimer, 1000);
+/* when round ends, compute score and display it (runs once) */
+async function endRound(){
+  // compute similarity (client-side) - if no topic, just set random
+  scoreDisplay.textContent = 'Scoring...';
+  try{
+    if(!currentTopic) { updateScoreDisplay(50 + Math.floor(Math.random()*51)); return; }
+    const val = await computeSimilarity(canvas, currentTopic.src); // 0..1
+    let percent = Math.round(val * 100);
+    if(percent < 50) percent = 50;
+    updateScoreDisplay(percent);
+    if(p2p && p2p.dc && p2p.dc.readyState==='open') {
+      const data = canvas.toDataURL('image/png');
+      sendP2P({type:'result', score: percent, img: data});
     }
+  }catch(e){
+    console.error(e); updateScoreDisplay(50);
+  }
+}
+function updateScoreDisplay(percent){
+  if(percent === null || percent === undefined) { scoreDisplay.textContent = '—/100'; progressBar.style.width = '0%'; }
+  else { scoreDisplay.textContent = `${percent}/100`; progressBar.style.width = `${percent}%`; }
+}
 
-    function updateTimer() {
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        calculateScore();
-      } else {
-        timeLeft--;
-        let minutes = Math.floor(timeLeft / 60);
-        let seconds = timeLeft % 60;
-        document.getElementById("timer").innerText = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+/* ---------------- Similarity code (edge-based) ---------------- */
+async function computeSimilarity(userCanvas, imageUrl){
+  const SIZE = 256;
+  const refCanvas = document.createElement('canvas'); refCanvas.width = SIZE; refCanvas.height = SIZE; const rctx = refCanvas.getContext('2d');
+  const userSmall = document.createElement('canvas'); userSmall.width = SIZE; userSmall.height = SIZE; const uctx = userSmall.getContext('2d');
+  uctx.fillStyle = '#fff'; uctx.fillRect(0,0,SIZE,SIZE);
+  // draw scaled user image
+  uctx.drawImage(userCanvas, 0,0,SIZE,SIZE);
+  const img = await loadImage(imageUrl);
+  const ar = img.width / img.height;
+  const canvasAr = SIZE / SIZE;
+  let dw = SIZE, dh = SIZE, dx = 0, dy = 0;
+  if(ar > canvasAr){ dh = SIZE; dw = Math.round(SIZE * ar); dx = Math.round((SIZE - dw) / 2); } else { dw = SIZE; dh = Math.round(SIZE / ar); dy = Math.round((SIZE - dh) / 2); }
+  rctx.fillStyle = '#fff'; rctx.fillRect(0,0,SIZE,SIZE); rctx.drawImage(img, dx, dy, dw, dh);
+  const refData = rctx.getImageData(0,0,SIZE,SIZE);
+  const userData = uctx.getImageData(0,0,SIZE,SIZE);
+  const refEdges = sobelEdgeMap(refData, SIZE, SIZE);
+  const userEdges = sobelEdgeMap(userData, SIZE, SIZE);
+  let inter=0, union=0;
+  for(let i=0;i<refEdges.length;i++){
+    const r = refEdges[i], u = userEdges[i];
+    if(r || u) union++;
+    if(r && u) inter++;
+  }
+  const iou = union === 0 ? 0 : inter / union;
+  const userCount = userEdges.reduce((a,v)=>a + (v?1:0),0);
+  const coverage = Math.min(1, userCount / (SIZE*SIZE*0.01));
+  return iou * coverage;
+}
+function loadImage(src){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>res(img);
+    img.onerror = ()=>rej(new Error('Image load error'));
+    img.src = src;
+  });
+}
+function sobelEdgeMap(imageData, w, h){
+  const px = imageData.data;
+  const gray = new Float32Array(w*h);
+  let idx=0;
+  for(let i=0;i<px.length;i+=4){ const r=px[i], g=px[i+1], b=px[i+2]; gray[idx++] = 0.2989*r + 0.5870*g + 0.1140*b; }
+  const gx = [-1,0,1,-2,0,2,-1,0,1];
+  const gy = [-1,-2,-1,0,0,0,1,2,1];
+  const out = new Uint8Array(w*h);
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      let sx=0, sy=0, k=0;
+      for(let ky=-1; ky<=1; ky++){
+        for(let kx=-1; kx<=1; kx++){
+          const val = gray[(y+ky)*w + (x+kx)];
+          sx += gx[k]*val; sy += gy[k]*val; k++;
+        }
       }
+      const mag = Math.sqrt(sx*sx + sy*sy);
+      out[y*w + x] = mag > 80 ? 1 : 0;
     }
+  }
+  return out;
+}
 
-    function calculateScore() {
-      // Placeholder random score
-      let score = Math.floor(Math.random() * 50) + 50; 
-      document.getElementById("score").innerText = "Score: " + score + "/100";
-    }
+/* ---------------- P2P (manual signaling) ---------------- */
+let p2p = null;
+function createPeerConnection(){
+  const pc = new RTCPeerConnection();
+  // prepare container
+  p2p = { pc, dc: null, candidates: [] };
 
-    function resetGame() {
-      clearInterval(timerInterval);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      timeLeft = 90;
-      document.getElementById("timer").innerText = "Time: 1:30";
-      document.getElementById("score").innerText = "Score: 0/100";
+  // Offerer side creates datachannel
+  try{
+    const dc = pc.createDataChannel('pictionary');
+    p2p.dc = dc;
+    dc.onopen = ()=>{ p2pStatus.textContent='P2P status: connected'; };
+    dc.onclose = ()=>{ p2pStatus.textContent='P2P status: disconnected'; };
+    dc.onmessage = ev => { try{ handleP2PMessage(JSON.parse(ev.data)); }catch(e){} };
+  }catch(e){ /* some browsers restrict if not allowed */ }
+
+  pc.ondatachannel = e => {
+    const ch = e.channel;
+    ch.onopen = ()=>{ p2pStatus.textContent='P2P status: connected (peer)'; p2p.dc = ch; };
+    ch.onmessage = ev => { try{ handleP2PMessage(JSON.parse(ev.data)); }catch(e){} };
+    ch.onclose = ()=>{ p2pStatus.textContent='P2P status: disconnected'; };
+  };
+
+  pc.onicecandidate = e => {
+    if(e.candidate) {
+      p2p.candidates.push(e.candidate);
+    } else {
+      // ICE gathering finished - we will export local desc elsewhere
     }
-  </script>
+  };
+
+  pc.onconnectionstatechange = ()=> {
+    if(pc.connectionState === 'connected') p2pStatus.textContent = 'P2P status: connected';
+    if(pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') p2pStatus.textContent = 'P2P status: disconnected';
+  };
+
+  return p2p;
+}
+
+// helper to export local sdp + candidates as single JSON
+function exportLocalDesc(){
+  if(!p2p || !p2p.pc || !p2p.pc.localDescription) return;
+  const out = { sdp: p2p.pc.localDescription, candidates: p2p.candidates };
+  signalingLocal.value = JSON.stringify(out);
+}
+
+createOfferBtn.addEventListener('click', async ()=>{
+  try{
+    createPeerConnection();
+    const offer = await p2p.pc.createOffer();
+    await p2p.pc.setLocalDescription(offer);
+    // give time for ICE candidates (quick heuristic)
+    setTimeout(()=>{ exportLocalDesc(); p2pStatus.textContent='P2P status: offer created — share text'; }, 900);
+  }catch(e){ alert('Offer failed: '+ (e && e.message)); console.error(e); }
+});
+
+acceptRemoteBtn.addEventListener('click', async ()=>{
+  try{
+    const remote = JSON.parse(signalingRemote.value);
+    if(remote.sdp && remote.sdp.type === 'offer'){
+      createPeerConnection();
+      await p2p.pc.setRemoteDescription(remote.sdp);
+      // add any candidates provided
+      if(Array.isArray(remote.candidates)) for(const c of remote.candidates) try{ await p2p.pc.addIceCandidate(c); }catch(e){}
+      const answer = await p2p.pc.createAnswer();
+      await p2p.pc.setLocalDescription(answer);
+      setTimeout(()=>{ exportLocalDesc(); p2pStatus.textContent='P2P status: answer created — send back'; }, 900);
+    } else if(remote.sdp && remote.sdp.type === 'answer'){
+      if(!p2p) createPeerConnection();
+      await p2p.pc.setRemoteDescription(remote.sdp);
+      if(Array.isArray(remote.candidates)) for(const c of remote.candidates) try{ await p2p.pc.addIceCandidate(c); }catch(e){}
+      p2pStatus.textContent='P2P status: connected (answer applied)';
+    } else {
+      // If only candidates were pasted
+      if(remote.candidates && Array.isArray(remote.candidates)) for(const c of remote.candidates) try{ await p2p.pc.addIceCandidate(c); }catch(e){}
+    }
+  }catch(e){ alert('Invalid remote payload. Paste the JSON your peer shared.'); console.error(e); }
+});
+
+closeP2PBtn.addEventListener('click', ()=>{
+  if(p2p && p2p.pc) try{ p2p.pc.close(); }catch(e){}
+  p2p = null; signalingLocal.value=''; signalingRemote.value=''; p2pStatus.textContent='P2P status: disconnected';
+});
+
+function sendP2P(obj){
+  try{
+    if(!p2p || !p2p.dc) return;
+    p2p.dc.send(JSON.stringify(obj));
+  }catch(e){}
+}
+
+function handleP2PMessage(msg){
+  if(!msg || !msg.type) return;
+  switch(msg.type){
+    case 'begin':
+      ctx.beginPath(); ctx.moveTo(msg.x, msg.y); ctx.lineWidth = msg.size; ctx.globalAlpha = msg.opacity; ctx.strokeStyle = msg.erasing ? 'rgba(0,0,0,1)' : msg.color; ctx.globalCompositeOperation = msg.erasing ? 'destination-out' : 'source-over';
+      break;
+    case 'draw':
+      ctx.lineTo(msg.x, msg.y); ctx.stroke(); break;
+    case 'end':
+      ctx.closePath(); break;
+    case 'topic':
+      currentTopic = msg.topic; referenceImg.src = currentTopic.src; topicNameEl.textContent = currentTopic.name; topicDiffEl.textContent = msg.level; referenceBox.style.display='block'; break;
+    case 'start':
+      // peer started drawing -> hide reference on this side as well and start timer if not started
+      if(!started) { referenceBox.style.display='none'; startRoundAuto(); }
+      break;
+    case 'result':
+      p2pStatus.textContent = `Peer finished — score ${msg.score}/100`; break;
+    case 'reset':
+      // peer reset -> clear this side too
+      ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+      history=[]; redoStack=[]; started=false; clearInterval(timer); timer=null; timeLeft=90; updateTimerDisplay(); updateScoreDisplay(null); referenceBox.style.display='block';
+      break;
+  }
+}
+
+/* ---------------- Init ---------------- */
+window.addEventListener('load', ()=>{
+  const t = pickTopic(levelSelect.value);
+  setReference(t, levelSelect.value);
+  pushHistory();
+  updateTimerDisplay();
+  updateScoreDisplay(null);
+});
+</script>
 </body>
 </html>
