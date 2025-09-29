@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pictionary — French Monuments (Firebase 1v1)</title>
+<title>Pictionary — French Monuments (1v1 Sync)</title>
 <style>
 :root{--accent:#1f7ed0}
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:18px;background:#f6fbff;color:#0b2433}
@@ -18,7 +18,6 @@ select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;backg
 .controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 .small{font-size:13px;color:#47606f}
 .right-top{display:flex;justify-content:space-between;align-items:center}
-button.primary{background:var(--accent);color:white;border:none}
 .score{font-weight:700;font-size:18px}
 .room { margin-top:10px; display:flex; gap:8px; align-items:center; }
 .input { padding:8px; border-radius:8px; border:1px solid #e6eef9; }
@@ -49,10 +48,9 @@ button.primary{background:var(--accent);color:white;border:none}
       </div>
     </div>
 
-    <div class="reference" id="referenceBox" style="display:none">
+    <div class="reference" id="referenceBox" style="display:block">
       <strong id="topicName"></strong>
       <div class="small" id="topicDiff"></div>
-      <img id="topicImage" alt="Reference image"/>
     </div>
 
     <div class="toolbar">
@@ -100,12 +98,7 @@ button.primary{background:var(--accent);color:white;border:none}
   </div>
 </div>
 
-<!-- Firebase + App logic -->
 <script type="module">
-/* ================== FIREBASE SETUP ==================
-   Replace only these firebaseConfig values if you later want to swap projects.
-   You already provided this config; I'm using it here.
-==================================================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
   getDatabase, ref, set, get, child, onValue, push, onChildAdded, remove, update
@@ -116,7 +109,7 @@ const firebaseConfig = {
   authDomain: "pictionary-b6c8b.firebaseapp.com",
   databaseURL: "https://pictionary-b6c8b-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "pictionary-b6c8b",
-  storageBucket: "pictionary-b6c8b.firebasestorage.app",
+  storageBucket: "pictionary-b6c8b.firebasedatabase.app",
   messagingSenderId: "319103864663",
   appId: "1:319103864663:web:3fb1aa8a38db68b95e3812",
   measurementId: "G-JX2LKWPX6Y"
@@ -125,57 +118,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ================== TOPICS ================== */
 const TOPICS = {
-  easy: [
-    { name: 'Eiffel Tower', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/1200px-Tour_Eiffel_Wikimedia_Commons.jpg' },
-    { name: 'Arc de Triomphe', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Arc_de_Triomphe_Wikimedia_Commons.jpg/1200px-Arc_de_Triomphe_Wikimedia_Commons.jpg' },
-    { name: 'Mont Saint-Michel', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Mont_Saint-Michel_Wikimedia_Commons.jpg/1200px-Mont_Saint-Michel_Wikimedia_Commons.jpg' }
-  ],
-  medium: [
-    { name: 'Notre-Dame de Paris', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Notre_Dame_de_Paris_2013.jpg/1200px-Notre_Dame_de_Paris_2013.jpg' },
-    { name: 'Louvre Pyramid', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Louvre_Museum_Wikimedia_Commons.jpg/1200px-Louvre_Museum_Wikimedia_Commons.jpg' },
-    { name: 'Château de Chambord', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Chateau_de_Chambord.jpg/1200px-Chateau_de_Chambord.jpg' }
-  ],
-  hard: [
-    { name: 'Sainte-Chapelle', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Sainte-Chapelle_interior.jpg/1200px-Sainte-Chapelle_interior.jpg' },
-    { name: 'Pont Neuf', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Pont_Neuf%2C_Paris%2C_2014.jpg/1200px-Pont_Neuf%2C_Paris%2C_2014.jpg' },
-    { name: 'Palace of Versailles', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Versailles_Palace_Wikimedia_Commons.jpg/1200px-Versailles_Palace_Wikimedia_Commons.jpg' }
-  ]
+  easy: [ { name: 'Eiffel Tower' }, { name: 'Arc de Triomphe' } ],
+  medium: [ { name: 'Notre-Dame de Paris' }, { name: 'Louvre Pyramid' } ],
+  hard: [ { name: 'Pantheon' }, { name: 'Arene de Nimes' } ]
 };
 
-/* ================== DOM ================== */
 const modeSelect = document.getElementById('modeSelect');
 const levelSelect = document.getElementById('levelSelect');
 const newBtn = document.getElementById('newBtn');
 const startBtn = document.getElementById('startBtn');
 const clearBtn = document.getElementById('clearBtn');
-const resetBtn = document.getElementById('resetBtn');
 const hostBtn = document.getElementById('hostBtn');
 const joinBtn = document.getElementById('joinBtn');
 const joinInput = document.getElementById('joinInput');
 const roomInfo = document.getElementById('roomInfo');
 const roleInfo = document.getElementById('roleInfo');
-
-const referenceBox = document.getElementById('referenceBox');
 const topicNameEl = document.getElementById('topicName');
 const topicDiffEl = document.getElementById('topicDiff');
-const topicImage = document.getElementById('topicImage');
-
 const timerDisplay = document.getElementById('timerDisplay');
 const scoreDisplay = document.getElementById('scoreDisplay');
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 
-const brushSize = document.getElementById('brushSize');
-const opacityEl = document.getElementById('opacity');
-const colorPicker = document.getElementById('colorPicker');
-const eraserBtn = document.getElementById('eraserBtn');
-const penBtn = document.getElementById('penBtn');
-const undoBtn = document.getElementById('undoBtn');
-const redoBtn = document.getElementById('redoBtn');
-
-/* ================== Canvas setup and history ================== */
 let dpr = window.devicePixelRatio || 1;
 function resizeCanvas(){
   const rect = canvas.parentElement.getBoundingClientRect();
@@ -188,290 +153,94 @@ window.addEventListener('resize', ()=> setTimeout(resizeCanvas,50));
 setTimeout(resizeCanvas,50);
 
 let history = [], redoStack = [];
-function pushHistory(){
-  try{ history.push(canvas.toDataURL()); if(history.length>80) history.shift(); redoStack=[]; }catch(e){}
-}
+function pushHistory(){ history.push(canvas.toDataURL()); if(history.length>80) history.shift(); redoStack=[]; }
 function restoreFromDataURL(dataURL){
   const img = new Image();
   img.onload = ()=>{ ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr); ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); ctx.drawImage(img,0,0,canvas.width/dpr,canvas.height/dpr); };
   img.src = dataURL;
 }
 
-/* ================== Drawing state ================== */
-let drawing=false, erasing=false, started=false, timer=null, timeLeft=90;
+let drawing=false, started=false, timeLeft=90;
 ctx.lineCap='round'; ctx.lineJoin='round';
+let currentRoom = null, isHost = false;
 
-/* client id (avoid replaying own strokes) */
-const clientId = Math.random().toString(36).slice(2,9);
-
-/* pointer helpers */
 function ptrPos(e){ const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+canvas.addEventListener('pointerdown', (e)=>{ drawing=true; const p=ptrPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); pushHistory(); });
+canvas.addEventListener('pointermove', (e)=>{ if(!drawing) return; const p=ptrPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); });
+canvas.addEventListener('pointerup', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); });
+canvas.addEventListener('pointerleave', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); });
 
-/* local drawing events and emit to firebase if in room */
-canvas.addEventListener('pointerdown', (e)=>{
-  drawing=true; const p=ptrPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); pushHistory();
-  if(!started && currentRoom && isHost) startRoundHost(); // host auto-starts when they begin
-  // send begin stroke event
-  if(currentRoom) sendStroke({type:'begin', x:p.x, y:p.y, color: colorPicker.value, size: brushSize.value, opacity: opacityEl.value, erasing, clientId});
-});
-canvas.addEventListener('pointermove', (e)=>{
-  if(!drawing) return; const p=ptrPos(e); ctx.lineTo(p.x,p.y); ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorPicker.value; ctx.lineWidth = brushSize.value; ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over'; ctx.globalAlpha = opacityEl.value; ctx.stroke();
-  if(currentRoom) sendStroke({type:'draw', x:p.x, y:p.y, clientId});
-});
-canvas.addEventListener('pointerup', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); if(currentRoom) sendStroke({type:'end', clientId}); });
-canvas.addEventListener('pointerleave', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); if(currentRoom) sendStroke({type:'end', clientId}); });
-
-eraserBtn.addEventListener('click', ()=>{ erasing=true; eraserBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; penBtn.style.boxShadow=''; });
-penBtn.addEventListener('click', ()=>{ erasing=false; penBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; eraserBtn.style.boxShadow=''; });
-
-undoBtn.addEventListener('click', ()=>{
-  if(history.length===0) return;
-  const last = history.pop();
-  redoStack.push(canvas.toDataURL());
-  if(history.length===0) ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
-  else restoreFromDataURL(history[history.length-1]);
-});
-redoBtn.addEventListener('click', ()=>{
-  if(redoStack.length===0) return;
-  const next = redoStack.pop(); history.push(canvas.toDataURL()); restoreFromDataURL(next);
-});
-clearBtn.addEventListener('click', ()=>{ ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); pushHistory(); updateScoreDisplay(null); if(currentRoom && isHost) clearRoomStrokes(); });
-
-/* ================== Topic / UI logic ================== */
-let currentTopic = null;
 function pickTopic(level){ const arr = TOPICS[level] || TOPICS.easy; return arr[Math.floor(Math.random()*arr.length)]; }
-function setReference(topic, level){ currentTopic = topic; topicNameEl.textContent = topic.name; topicDiffEl.textContent = level.charAt(0).toUpperCase() + level.slice(1); topicImage.src = topic.img; referenceBox.style.display='block'; updateScoreDisplay(null); }
-newBtn.addEventListener('click', ()=>{ const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); pushHistory(); if(currentRoom && isHost) writeRoom({ topic: t, level: levelSelect.value }); });
+function setReference(topic, level){ topicNameEl.textContent = topic.name; topicDiffEl.textContent = level.charAt(0).toUpperCase() + level.slice(1); }
 
+newBtn.addEventListener('click', ()=>{ const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); pushHistory(); });
 levelSelect.addEventListener('change', ()=>{ const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); });
 
-/* ================== Timer & scoring ================== */
-function updateTimerDisplay(){
-  const m = Math.floor(timeLeft/60).toString().padStart(2,'0'); const s = (timeLeft%60).toString().padStart(2,'0');
-  timerDisplay.textContent = `${m}:${s}`;
-}
-function startRoundHost(){ // host-only: set startAt in room so guests start too
-  if(!currentRoom || !isHost) { startRoundLocal(); return; }
-  const startAt = Date.now();
-  writeRoom({ started: true, startAt, duration: 90 });
-}
-function startRoundLocal(){ // local start (singleplayer) or when guest detects startAt
+function updateTimerDisplay(){ const m = Math.floor(timeLeft/60).toString().padStart(2,'0'); const s = (timeLeft%60).toString().padStart(2,'0'); timerDisplay.textContent = `${m}:${s}`; }
+
+function startRoundLocal(topicData){
   if(started) return;
-  started = true; timeLeft = 90; updateTimerDisplay();
-  timer = setInterval(()=>{ timeLeft--; updateTimerDisplay(); if(timeLeft<=0){ clearInterval(timer); timer=null; started=false; if(isHost && currentRoom) finalizeAndPublishScore(); else endRoundLocal(); } }, 1000);
-}
-startBtn.addEventListener('click', ()=>{ if(modeSelect.value==='duel' && currentRoom && isHost) startRoundHost(); else startRoundLocal(); });
-
-function endRoundLocal(){ // client side fallback
-  updateScoreDisplay(Math.floor(Math.random()*51)+50);
-}
-
-/* score: host computes similarity and writes to room */
-async function finalizeAndPublishScore(){
-  try{
-    scoreDisplay.textContent = 'Scoring...';
-    if(!currentTopic) { updateScoreDisplay(50); return; }
-    const val = await computeSimilarity(canvas, currentTopic.img);
-    let percent = Math.round(val*100); if(percent < 50) percent = 50;
-    // publish to room
-    writeRoom({ result: { score: percent, at: Date.now() } });
-  }catch(e){ console.error(e); updateScoreDisplay(50); }
+  started = true;
+  timeLeft = 90;
+  updateTimerDisplay();
+  setReference(topicData, topicData.level);
+  const timerInterval = setInterval(()=>{
+    if(timeLeft<=0){ clearInterval(timerInterval); started=false; } else { timeLeft--; updateTimerDisplay(); }
+  }, 1000);
 }
 
-/* update score on UI */
-function updateScoreDisplay(percent){
-  if(percent === null || percent === undefined) scoreDisplay.textContent = '—/100';
-  else scoreDisplay.textContent = `${percent}/100`;
-}
-
-/* ================== SIMILARITY (edge IoU) ================== */
-async function computeSimilarity(userCanvas, imageUrl){
-  const SIZE = 256;
-  const refCanvas = document.createElement('canvas'); refCanvas.width = SIZE; refCanvas.height = SIZE; const rctx = refCanvas.getContext('2d');
-  const userSmall = document.createElement('canvas'); userSmall.width = SIZE; userSmall.height = SIZE; const uctx = userSmall.getContext('2d');
-  uctx.fillStyle = '#fff'; uctx.fillRect(0,0,SIZE,SIZE); uctx.drawImage(userCanvas, 0,0,SIZE,SIZE);
-  const img = await loadImage(imageUrl);
-  const ar = img.width/img.height; const canvasAr = SIZE/SIZE; let dw=SIZE, dh=SIZE, dx=0, dy=0;
-  if(ar>canvasAr){ dh = SIZE; dw = Math.round(SIZE * ar); dx = Math.round((SIZE-dw)/2); } else { dw = SIZE; dh = Math.round(SIZE / ar); dy = Math.round((SIZE-dh)/2); }
-  rctx.fillStyle='#fff'; rctx.fillRect(0,0,SIZE,SIZE); rctx.drawImage(img, dx, dy, dw, dh);
-  const refData = rctx.getImageData(0,0,SIZE,SIZE); const userData = uctx.getImageData(0,0,SIZE,SIZE);
-  const refEdges = sobelEdgeMap(refData, SIZE, SIZE); const userEdges = sobelEdgeMap(userData, SIZE, SIZE);
-  let inter=0, union=0;
-  for(let i=0;i<refEdges.length;i++){ const r=refEdges[i], u=userEdges[i]; if(r||u) union++; if(r&&u) inter++; }
-  const iou = union===0 ? 0 : inter/union;
-  const userCount = userEdges.reduce((a,v)=>a + (v?1:0),0);
-  const coverage = Math.min(1, userCount / (SIZE*SIZE*0.01));
-  return iou * coverage;
-}
-function loadImage(src){ return new Promise((res,rej)=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
-function sobelEdgeMap(imageData,w,h){ const px=imageData.data; const gray=new Float32Array(w*h); let idx=0; for(let i=0;i<px.length;i+=4){ const r=px[i],g=px[i+1],b=px[i+2]; gray[idx++]=0.2989*r+0.5870*g+0.1140*b; } const gx=[-1,0,1,-2,0,2,-1,0,1], gy=[-1,-2,-1,0,0,0,1,2,1]; const out=new Uint8Array(w*h);
-  for(let y=1;y<h-1;y++){ for(let x=1;x<w-1;x++){ let sx=0,sy=0,k=0; for(let ky=-1;ky<=1;ky++){ for(let kx=-1;kx<=1;kx++){ const val=gray[(y+ky)*w + (x+kx)]; sx += gx[k]*val; sy += gy[k]*val; k++; } } const mag=Math.sqrt(sx*sx + sy*sy); out[y*w+x] = mag > 80 ? 1 : 0; } } return out; }
-
-/* ================== FIREBASE ROOM LOGIC ================== */
-let currentRoom = null;
-let isHost = false;
-let strokesRef = null;
-
-function generateCode(){
-  return Math.random().toString(36).substring(2,7).toUpperCase();
-}
-
-/* create a new room (host) */
-hostBtn.addEventListener('click', async ()=>{
-  const code = generateCode();
-  currentRoom = code;
-  isHost = true;
-  // room initial state
-  await set(ref(db, 'rooms/' + code), {
-    createdAt: Date.now(),
-    started: false,
-    startAt: null,
-    duration: 90,
-    topic: null,
-    level: levelSelect.value,
-    result: null,
-    resetCounter: 0
-  });
-  roomInfo.textContent = 'Room: ' + code;
-  roleInfo.textContent = 'You are Host';
-  // clear any previous strokes path
-  await remove(ref(db, 'rooms/' + code + '/strokes'));
-  attachRoomListeners(code);
+startBtn.addEventListener('click', async ()=>{
+  if(modeSelect.value==="duel" && currentRoom && isHost){
+    const topic = pickTopic(levelSelect.value);
+    await update(ref(db,'rooms/'+currentRoom), { started:true, topic:topic, level:levelSelect.value });
+  }
+  startRoundLocal({ name:topicNameEl.textContent, level:levelSelect.value });
 });
 
-/* join room */
+hostBtn.addEventListener('click', async ()=>{
+  const code = Math.random().toString(36).substring(2,7).toUpperCase();
+  currentRoom = code;
+  isHost = true;
+  const topic = pickTopic(levelSelect.value);
+  await set(ref(db, 'rooms/' + code), { createdAt: Date.now(), started: false, topic: topic, level: levelSelect.value });
+  roomInfo.textContent = 'Room: ' + code;
+  roleInfo.textContent = 'You are Host';
+  setReference(topic, levelSelect.value);
+
+  onValue(ref(db,'rooms/'+currentRoom),snap=>{
+    if(snap.exists()){
+      const data = snap.val();
+      if(data.started) startRoundLocal(data.topic);
+    }
+  });
+});
+
 joinBtn.addEventListener('click', async ()=>{
   const code = (joinInput.value || '').trim().toUpperCase();
   if(!code){ alert('Enter a room code'); return; }
   const snap = await get(child(ref(db), 'rooms/' + code));
   if(!snap.exists()){ alert('Room not found'); return; }
-  currentRoom = code; isHost = false;
+  currentRoom = code;
+  isHost = false;
   roomInfo.textContent = 'Room: ' + code;
   roleInfo.textContent = 'You are Guest';
-  attachRoomListeners(code);
+  const data = snap.val();
+  setReference(data.topic,data.level);
+
+  onValue(ref(db,'rooms/'+currentRoom),snap=>{
+    if(snap.exists()){
+      const data = snap.val();
+      if(data.started) startRoundLocal(data.topic);
+    }
+  });
 });
 
-/* write small object merges */
-async function writeRoom(obj){
-  if(!currentRoom) return;
-  const r = ref(db, 'rooms/' + currentRoom);
-  await update(r, obj);
-}
-
-/* clear strokes in room (host) */
-async function clearRoomStrokes(){
-  if(!currentRoom) return;
-  await remove(ref(db, 'rooms/' + currentRoom + '/strokes'));
-  // bump resetCounter to tell clients to clear locally too
-  const rcRef = ref(db, 'rooms/' + currentRoom + '/resetCounter');
-  const snap = await get(rcRef);
-  const val = snap.exists() ? (snap.val() || 0) + 1 : 1;
-  await set(rcRef, val);
-}
-
-/* send stroke to firebase (push) */
-function sendStroke(stroke){
-  if(!currentRoom) return;
-  const p = ref(db, 'rooms/' + currentRoom + '/strokes');
-  push(p, stroke);
-}
-
-/* attach listeners for room */
-function attachRoomListeners(code){
-  // listen for room meta changes
-  const roomRef = ref(db, 'rooms/' + code);
-  onValue(roomRef, (snap)=>{
-    const data = snap.val();
-    if(!data) return;
-    // topic
-    if(data.topic && (!currentTopic || data.topic.name !== currentTopic.name)) {
-      setReference(data.topic, data.level || levelSelect.value);
-    }
-    // started: if host started at startAt, guests start the timer locally
-    if(data.started && data.startAt) {
-      if(!started) {
-        // compute timeLeft from startAt and duration
-        const elapsed = Math.floor((Date.now() - data.startAt)/1000);
-        timeLeft = Math.max(0, (data.duration || 90) - elapsed);
-        startRoundLocal();
-      }
-    }
-    // result published
-    if(data.result) {
-      updateScoreDisplay(data.result.score);
-    } else {
-      updateScoreDisplay(null);
-    }
-  });
-
-  // listen for new strokes (replay)
-  strokesRef = ref(db, 'rooms/' + code + '/strokes');
-  onChildAdded(strokesRef, (snap)=>{
-    const s = snap.val();
-    if(!s) return;
-    // avoid replaying our own strokes (we already drew them)
-    if(s.clientId && s.clientId === clientId) return;
-    // replay stroke events
-    if(s.type === 'begin'){ ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineWidth = s.size || 4; ctx.strokeStyle = s.erasing ? 'rgba(0,0,0,1)' : (s.color || '#000'); ctx.globalCompositeOperation = s.erasing ? 'destination-out' : 'source-over'; ctx.globalAlpha = s.opacity || 1; }
-    else if(s.type === 'draw'){ ctx.lineTo(s.x, s.y); ctx.stroke(); }
-    else if(s.type === 'end'){ ctx.closePath(); }
-  });
-
-  // listen for resetCounter changes to clear local canvas
-  const rcRef = ref(db, 'rooms/' + code + '/resetCounter');
-  onValue(rcRef, (snap)=>{
-    if(!snap.exists()) return;
-    // clear local canvas
-    ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
-    history=[]; redoStack=[]; updateScoreDisplay(null);
-    referenceBox.style.display='block';
-  });
-}
-
-/* ================== ROOM HELPERS ================== */
-/* Host can set topic/level to room object */
-async function writeTopicToRoom(topic, level){
-  if(!currentRoom || !isHost) return;
-  await update(ref(db, 'rooms/' + currentRoom), { topic, level });
-}
-
-/* Host sets started status and startAt */
-startBtn.addEventListener('click', async ()=>{
-  if(modeSelect.value === 'duel' && currentRoom && isHost){
-    // host sets topic in room too (if not set)
-    if(!currentTopic) { const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); }
-    await update(ref(db, 'rooms/' + currentRoom), { started: true, startAt: Date.now(), duration: 90 });
-    // clear previous strokes
-    await remove(ref(db, 'rooms/' + currentRoom + '/strokes'));
-    // start timer locally on host
-    timeLeft = 90; startRoundLocal();
-  } else {
-    // singleplayer
-    if(!currentTopic) { const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); }
-    startRoundLocal();
-  }
-});
-
-/* Host clearing / reset handled above via clearRoomStrokes */
-
-/* ================== INIT ================== */
-window.addEventListener('load', ()=> {
+window.addEventListener('load', ()=>{
   const t = pickTopic(levelSelect.value);
   setReference(t, levelSelect.value);
-  pushHistory();
   updateTimerDisplay();
-  updateScoreDisplay(null);
+  scoreDisplay.textContent = '—/100';
 });
-
-/* ================== UTILS ================== */
-/* small helper to update timer UI */
-function updateTimerDisplay(){
-  const m = Math.floor(timeLeft/60).toString().padStart(2,'0');
-  const s = (timeLeft%60).toString().padStart(2,'0');
-  timerDisplay.textContent = `${m}:${s}`;
-}
-
-/* ================== END OF SCRIPT ================== */
 </script>
 </body>
 </html>
