@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Pictionary Game with Reference Image</title>
+  <title>Pictionary French Monuments</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; }
     #reference-image { max-width: 300px; max-height: 200px; display: block; margin-bottom: 1em; border: 1px solid #ccc; }
     #canvas { border: 2px solid #333; }
-    #topic { font-size: 1.25em; margin-bottom: 0.5em; }
+    #topic { font-size: 1.25em; margin-bottom: 0.5em; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -21,6 +21,7 @@
     <input id="roomInput" placeholder="Enter room code" />
     <button id="joinBtn">Join Game</button>
     <div id="status"></div>
+    <!-- Add any other elements from your original layout here -->
   </div>
   <script>
     // Topics and image URLs
@@ -74,7 +75,7 @@
 
     // Topic and image logic
     function setTopic(topic) {
-      document.getElementById('topic').textContent = `Topic: ${topic}`;
+      document.getElementById('topic').textContent = `Monument: ${topic}`;
       const imgUrl = topicsWithImages[topic];
       const imgElem = document.getElementById('reference-image');
       if (imgUrl) {
