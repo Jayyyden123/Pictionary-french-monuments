@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pictionary — French Monuments (1v1 Sync)</title>
+<title>Pictionary — French Monuments</title>
 <style>
 :root{--accent:#1f7ed0}
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:18px;background:#f6fbff;color:#0b2433}
@@ -18,6 +18,7 @@ select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;backg
 .controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 .small{font-size:13px;color:#47606f}
 .right-top{display:flex;justify-content:space-between;align-items:center}
+button.primary{background:var(--accent);color:white;border:none}
 .score{font-weight:700;font-size:18px}
 .room { margin-top:10px; display:flex; gap:8px; align-items:center; }
 .input { padding:8px; border-radius:8px; border:1px solid #e6eef9; }
@@ -28,7 +29,6 @@ select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;backg
 <body>
 <div style="max-width:1200px;margin:0 auto"><h1>Pictionary — French Monuments</h1></div>
 <div class="wrap">
-  <!-- Left -->
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
@@ -48,7 +48,7 @@ select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;backg
       </div>
     </div>
 
-    <div class="reference" id="referenceBox" style="display:block">
+    <div class="reference" id="referenceBox">
       <strong id="topicName"></strong>
       <div class="small" id="topicDiff"></div>
     </div>
@@ -69,7 +69,6 @@ select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;backg
     <div id="roleInfo" class="status"></div>
   </div>
 
-  <!-- Right -->
   <div class="panel" style="display:flex;flex-direction:column;">
     <div class="right-top">
       <div>
@@ -105,41 +104,47 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDY0G9cCRmte-Nj5bIkkFsexrhN57KWH9I",
-  authDomain: "pictionary-b6c8b.firebaseapp.com",
-  databaseURL: "https://pictionary-b6c8b-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "pictionary-b6c8b",
-  storageBucket: "pictionary-b6c8b.firebasedatabase.app",
-  messagingSenderId: "319103864663",
-  appId: "1:319103864663:web:3fb1aa8a38db68b95e3812",
-  measurementId: "G-JX2LKWPX6Y"
+  apiKey: "...",
+  authDomain: "...",
+  databaseURL: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "...",
+  measurementId: "..."
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-const TOPICS = {
-  easy: [ { name: 'Eiffel Tower' }, { name: 'Arc de Triomphe' } ],
-  medium: [ { name: 'Notre-Dame de Paris' }, { name: 'Louvre Pyramid' } ],
-  hard: [ { name: 'Pantheon' }, { name: 'Arene de Nimes' } ]
-};
 
 const modeSelect = document.getElementById('modeSelect');
 const levelSelect = document.getElementById('levelSelect');
 const newBtn = document.getElementById('newBtn');
 const startBtn = document.getElementById('startBtn');
 const clearBtn = document.getElementById('clearBtn');
+const resetBtn = document.getElementById('resetBtn');
 const hostBtn = document.getElementById('hostBtn');
 const joinBtn = document.getElementById('joinBtn');
 const joinInput = document.getElementById('joinInput');
 const roomInfo = document.getElementById('roomInfo');
 const roleInfo = document.getElementById('roleInfo');
+
+const referenceBox = document.getElementById('referenceBox');
 const topicNameEl = document.getElementById('topicName');
 const topicDiffEl = document.getElementById('topicDiff');
+
 const timerDisplay = document.getElementById('timerDisplay');
 const scoreDisplay = document.getElementById('scoreDisplay');
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
+
+const brushSize = document.getElementById('brushSize');
+const opacityEl = document.getElementById('opacity');
+const colorPicker = document.getElementById('colorPicker');
+const eraserBtn = document.getElementById('eraserBtn');
+const penBtn = document.getElementById('penBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
 
 let dpr = window.devicePixelRatio || 1;
 function resizeCanvas(){
@@ -153,93 +158,63 @@ window.addEventListener('resize', ()=> setTimeout(resizeCanvas,50));
 setTimeout(resizeCanvas,50);
 
 let history = [], redoStack = [];
-function pushHistory(){ history.push(canvas.toDataURL()); if(history.length>80) history.shift(); redoStack=[]; }
+function pushHistory(){
+  history.push(canvas.toDataURL());
+  if(history.length>80) history.shift();
+  redoStack=[];
+}
 function restoreFromDataURL(dataURL){
   const img = new Image();
-  img.onload = ()=>{ ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr); ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); ctx.drawImage(img,0,0,canvas.width/dpr,canvas.height/dpr); };
+  img.onload = ()=>{ ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); ctx.drawImage(img,0,0,canvas.width/dpr,canvas.height/dpr); };
   img.src = dataURL;
 }
 
-let drawing=false, started=false, timeLeft=90;
+let drawing=false, erasing=false, started=false, timer=null, timeLeft=90;
 ctx.lineCap='round'; ctx.lineJoin='round';
-let currentRoom = null, isHost = false;
+
+const clientId = Math.random().toString(36).slice(2,9);
 
 function ptrPos(e){ const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-canvas.addEventListener('pointerdown', (e)=>{ drawing=true; const p=ptrPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); pushHistory(); });
-canvas.addEventListener('pointermove', (e)=>{ if(!drawing) return; const p=ptrPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); });
-canvas.addEventListener('pointerup', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); });
-canvas.addEventListener('pointerleave', ()=>{ if(!drawing) return; drawing=false; ctx.closePath(); });
 
-function pickTopic(level){ const arr = TOPICS[level] || TOPICS.easy; return arr[Math.floor(Math.random()*arr.length)]; }
-function setReference(topic, level){ topicNameEl.textContent = topic.name; topicDiffEl.textContent = level.charAt(0).toUpperCase() + level.slice(1); }
+canvas.addEventListener('pointerdown', (e)=>{
+  drawing=true; const p=ptrPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); pushHistory();
+});
+canvas.addEventListener('pointermove', (e)=>{
+  if(!drawing) return; const p=ptrPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); 
+});
+canvas.addEventListener('pointerup', ()=>{ drawing=false; ctx.closePath(); });
+canvas.addEventListener('pointerleave', ()=>{ drawing=false; ctx.closePath(); });
 
-newBtn.addEventListener('click', ()=>{ const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); pushHistory(); });
-levelSelect.addEventListener('change', ()=>{ const t = pickTopic(levelSelect.value); setReference(t, levelSelect.value); });
+brushSize.addEventListener("input",()=>ctx.lineWidth=brushSize.value);
+opacityEl.addEventListener("input",()=>ctx.globalAlpha=opacityEl.value);
+colorPicker.addEventListener("input",()=>ctx.strokeStyle=colorPicker.value);
+eraserBtn.addEventListener("click",()=>ctx.strokeStyle="#fff");
+penBtn.addEventListener("click",()=>ctx.strokeStyle=colorPicker.value);
+undoBtn.addEventListener("click",()=>{
+  if(history.length>0){redoStack.push(history.pop());if(history.length>0)restoreFromDataURL(history[history.length-1]);else ctx.clearRect(0,0,canvas.width,canvas.height);}
+});
+redoBtn.addEventListener("click",()=>{
+  if(redoStack.length>0){let img=redoStack.pop();restoreFromDataURL(img);history.push(img);}
+});
+clearBtn.addEventListener("click",()=>{ctx.clearRect(0,0,canvas.width,canvas.height);pushHistory();});
+resetBtn.addEventListener("click",()=>{ctx.clearRect(0,0,canvas.width,canvas.height);pushHistory();timeLeft=90;updateTimerDisplay();started=false;});
 
-function updateTimerDisplay(){ const m = Math.floor(timeLeft/60).toString().padStart(2,'0'); const s = (timeLeft%60).toString().padStart(2,'0'); timerDisplay.textContent = `${m}:${s}`; }
-
-function startRoundLocal(topicData){
-  if(started) return;
-  started = true;
-  timeLeft = 90;
-  updateTimerDisplay();
-  setReference(topicData, topicData.level);
-  const timerInterval = setInterval(()=>{
-    if(timeLeft<=0){ clearInterval(timerInterval); started=false; } else { timeLeft--; updateTimerDisplay(); }
-  }, 1000);
+function updateTimerDisplay(){
+  const m=Math.floor(timeLeft/60).toString().padStart(2,'0'),s=(timeLeft%60).toString().padStart(2,'0');
+  timerDisplay.textContent=`${m}:${s}`;
 }
+function startRoundLocal(){
+  if(started)return;started=true;timeLeft=90;updateTimerDisplay();
+  timer=setInterval(()=>{
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft<=0){clearInterval(timer);started=false;}
+  },1000);
+}
+startBtn.addEventListener("click",startRoundLocal);
 
-startBtn.addEventListener('click', async ()=>{
-  if(modeSelect.value==="duel" && currentRoom && isHost){
-    const topic = pickTopic(levelSelect.value);
-    await update(ref(db,'rooms/'+currentRoom), { started:true, topic:topic, level:levelSelect.value });
-  }
-  startRoundLocal({ name:topicNameEl.textContent, level:levelSelect.value });
-});
-
-hostBtn.addEventListener('click', async ()=>{
-  const code = Math.random().toString(36).substring(2,7).toUpperCase();
-  currentRoom = code;
-  isHost = true;
-  const topic = pickTopic(levelSelect.value);
-  await set(ref(db, 'rooms/' + code), { createdAt: Date.now(), started: false, topic: topic, level: levelSelect.value });
-  roomInfo.textContent = 'Room: ' + code;
-  roleInfo.textContent = 'You are Host';
-  setReference(topic, levelSelect.value);
-
-  onValue(ref(db,'rooms/'+currentRoom),snap=>{
-    if(snap.exists()){
-      const data = snap.val();
-      if(data.started) startRoundLocal(data.topic);
-    }
-  });
-});
-
-joinBtn.addEventListener('click', async ()=>{
-  const code = (joinInput.value || '').trim().toUpperCase();
-  if(!code){ alert('Enter a room code'); return; }
-  const snap = await get(child(ref(db), 'rooms/' + code));
-  if(!snap.exists()){ alert('Room not found'); return; }
-  currentRoom = code;
-  isHost = false;
-  roomInfo.textContent = 'Room: ' + code;
-  roleInfo.textContent = 'You are Guest';
-  const data = snap.val();
-  setReference(data.topic,data.level);
-
-  onValue(ref(db,'rooms/'+currentRoom),snap=>{
-    if(snap.exists()){
-      const data = snap.val();
-      if(data.started) startRoundLocal(data.topic);
-    }
-  });
-});
-
-window.addEventListener('load', ()=>{
-  const t = pickTopic(levelSelect.value);
-  setReference(t, levelSelect.value);
+window.addEventListener('load',()=>{
   updateTimerDisplay();
-  scoreDisplay.textContent = '—/100';
 });
 </script>
 </body>
