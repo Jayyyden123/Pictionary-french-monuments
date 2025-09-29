@@ -348,7 +348,7 @@ function updateUIForMode(){
 // Multiplayer logic (Socket.io, minimal serverless, demo only)
 // In real app, backend needed for rooms, drawing sync, etc.
 // For this demo, use public Socket.io server - not for production!
-const socket = io("wss://ws.copilotgithub.dev/", { autoConnect: false }); // fallback no backend, just for demo
+const socket = io("ws://192.168.0.1:3000", { autoConnect: false }); // fallback no backend, just for demo
 let roomId = null, isHostFlag = false, duelDrawingAllowed = false, duelJoined = false;
 
 // Room code generation (simple random)
