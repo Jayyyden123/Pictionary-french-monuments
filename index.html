@@ -1,141 +1,512 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>Pictionary French Monuments</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    #reference-image { max-width: 300px; max-height: 200px; display: block; margin-bottom: 1em; border: 1px solid #ccc; }
-    #canvas { border: 2px solid #333; }
-    #topic { font-size: 1.25em; margin-bottom: 0.5em; font-weight: bold; }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pictionary — French Monuments</title>
+<style>
+:root{--accent:#1f7ed0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:18px;background:#f6fbff;color:#0b2433}
+.wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:18px}
+.panel{background:white;border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(20,40,60,.06);display:flex;flex-direction:column;}
+h1{margin:0 0 12px;font-size:20px}
+select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;background:transparent;font-size:13px}
+.reference{margin-top:10px;font-size:16px;font-weight:bold}
+.reference img {margin-top:8px;max-width:90%;max-height:180px;border-radius:8px;border:1px solid #e6eef9;display:block;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#drawCanvas{background:#fff;border-radius:8px;border:1px solid #e6eef9;touch-action:none;width:100%;height:100%;}
+.controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.small{font-size:13px;color:#47606f}
+.right-top{display:flex;justify-content:space-between;align-items:center}
+button.primary{background:var(--accent);color:white;border:none}
+.score{font-weight:700;font-size:18px}
+.hidden {display: none;}
+.room-row {display: flex; gap: 8px; align-items: center; margin: 8px 0;}
+input[type="text"].roomcode {width: 90px;}
+</style>
 </head>
 <body>
-  <h1>Pictionary - French Monuments</h1>
-  <div id="game">
-    <div id="topic"></div>
-    <img id="reference-image" src="" alt="Reference image" style="display:none;">
-    <canvas id="canvas" width="400" height="400"></canvas>
-    <br>
-    <button id="hostBtn">Host Game</button>
-    <input id="roomInput" placeholder="Enter room code" />
-    <button id="joinBtn">Join Game</button>
-    <div id="status"></div>
-    <!-- Add any other elements from your original layout here -->
-  </div>
-  <script>
-    // Topics and image URLs
-    const topicsWithImages = {
-      "Eiffel Tower": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg",
-      "Louvre Museum": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Louvre_2007_02_24_c.jpg",
-      "Arc de Triomphe": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Arc_de_Triomphe_Paris.jpg",
-      "Notre-Dame Cathedral": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre-Dame_de_Paris_2013-07-24.jpg"
-    };
+<div style="max-width:1200px;margin:0 auto"><h1>Pictionary — French Monuments</h1></div>
+<div class="wrap">
+<div class="panel">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div>
+<div class="small">Mode</div>
+<select id="modeSelect">
+<option value="single">Singleplayer</option>
+<option value="local">Local — Pass & Play</option>
+<option value="duel">1v1 Duel (Online)</option>
+</select>
+</div>
+<div>
+<div class="small">Level</div>
+<select id="levelSelect">
+<option value="easy">Easy</option>
+<option value="medium">Medium</option>
+<option value="hard">Hard</option>
+</select>
+</div>
+</div>
 
-    // Socket.io setup
-    const socket = io("ws://192.168.0.1:3000", { autoConnect: false });
+<div class="room-row hidden" id="duelSetup">
+<button id="hostBtn">Host Game</button>
+<span class="hidden" id="hostRoom">Room: <span id="roomCode"></span></span>
+<input class="roomcode" id="joinCode" type="text" placeholder="Room Code"/>
+<button id="joinBtn">Join</button>
+<span id="duelStatus"></span>
+</div>
 
-    let myRoom = null;
-    let isHost = false;
+<div class="reference" id="referenceBox">
+<strong id="topicName"></strong>
+<div class="small" id="topicDiff"></div>
+<img id="topicImage" src="" alt="" style="display:none;">
+</div>
 
-    // Canvas drawing logic
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    let drawing = false;
+<div class="toolbar">
+<button id="newBtn">New Topic</button>
+<button id="startBtn" class="primary">Start Round (1:30)</button>
+<button id="clearBtn">Clear</button>
+<button id="resetBtn">Reset</button>
+</div>
+</div>
 
-    canvas.addEventListener("mousedown", e => {
-      drawing = true;
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
-    });
+<div class="panel" style="display:flex;flex-direction:column;">
+<div class="right-top">
+<div>
+<div class="small">Timer</div>
+<div id="timerDisplay" style="font-size:20px;font-weight:700;color:#2563eb">01:30</div>
+</div>
+<div style="text-align:right">
+<div class="small">Score</div>
+<div id="scoreDisplay" class="score">—/100</div>
+</div>
+</div>
 
-    canvas.addEventListener("mousemove", e => {
-      if (drawing) {
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.stroke();
-        // Send drawing event to server
-        if (myRoom) {
-          socket.emit("draw_event", { room: myRoom, x: e.offsetX, y: e.offsetY, type: "draw" });
-        }
-      }
-    });
+<div style="flex:1">
+<canvas id="drawCanvas"></canvas>
+</div>
 
-    canvas.addEventListener("mouseup", () => {
-      drawing = false;
-      ctx.closePath();
-    });
+<div class="controls">
+<label>Brush: <input id="brushSize" type="range" min="1" max="60" value="6"></label>
+<label>Opacity: <input id="opacity" type="range" min="0.1" max="1" step="0.1" value="1"></label>
+<label>Color: <input id="colorPicker" type="color" value="#000000"></label>
+<button id="eraserBtn">Eraser</button>
+<button id="penBtn">Pen</button>
+<button id="undoBtn">Undo</button>
+<button id="redoBtn">Redo</button>
+</div>
+</div>
+</div>
 
-    // Receive and draw remote events
-    socket.on("draw_event", data => {
-      if (data.room === myRoom) {
-        ctx.lineTo(data.x, data.y);
-        ctx.stroke();
-      }
-    });
+<!-- Socket.io for multiplayer (CDN) -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const TOPICS = {
+easy: ["Eiffel Tower","Arc de Triomphe"],
+medium: ["Notre-Dame de Paris","Louvre Pyramid"],
+hard: ["Panthéon","Arènes de Nîmes"]
+};
+// Monument images
+const TOPIC_IMAGES = {
+  "Eiffel Tower": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg",
+  "Arc de Triomphe": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Arc_de_Triomphe_Paris.jpg",
+  "Notre-Dame de Paris": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Notre-Dame_de_Paris_2013-07-24.jpg",
+  "Louvre Pyramid": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Louvre_Pyramid.jpg",
+  "Panthéon": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Panth%C3%A9on_Paris_1.jpg",
+  "Arènes de Nîmes": "https://upload.wikimedia.org/wikipedia/commons/6/6d/Nimes_arenes_49.jpg"
+};
 
-    // Topic and image logic
-    function setTopic(topic) {
-      document.getElementById('topic').textContent = `Monument: ${topic}`;
-      const imgUrl = topicsWithImages[topic];
-      const imgElem = document.getElementById('reference-image');
-      if (imgUrl) {
-        imgElem.src = imgUrl;
-        imgElem.style.display = 'block';
-      } else {
-        imgElem.style.display = 'none';
-      }
+const modeSelect = document.getElementById('modeSelect');
+const levelSelect = document.getElementById('levelSelect');
+const newBtn = document.getElementById('newBtn');
+const startBtn = document.getElementById('startBtn');
+const clearBtn = document.getElementById('clearBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+const topicNameEl = document.getElementById('topicName');
+const topicDiffEl = document.getElementById('topicDiff');
+const topicImageEl = document.getElementById('topicImage');
+
+const timerDisplay = document.getElementById('timerDisplay');
+const scoreDisplay = document.getElementById('scoreDisplay');
+
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+const brushSize = document.getElementById('brushSize');
+const opacity = document.getElementById('opacity');
+const colorPicker = document.getElementById('colorPicker');
+const eraserBtn = document.getElementById('eraserBtn');
+const penBtn = document.getElementById('penBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+// Multiplayer UI
+const duelSetup = document.getElementById('duelSetup');
+const hostBtn = document.getElementById('hostBtn');
+const hostRoom = document.getElementById('hostRoom');
+const roomCodeEl = document.getElementById('roomCode');
+const joinCode = document.getElementById('joinCode');
+const joinBtn = document.getElementById('joinBtn');
+const duelStatus = document.getElementById('duelStatus');
+
+// Drawing state
+let dpr = window.devicePixelRatio || 1;
+function resizeCanvas(){
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(dpr,dpr);
+}
+window.addEventListener('resize', ()=>{ setTimeout(resizeCanvas,50); });
+setTimeout(resizeCanvas,50);
+
+// History for undo/redo
+let history = [], redoStack = [];
+function pushHistory(){
+    try{ history.push(canvas.toDataURL()); if(history.length>60) history.shift(); redoStack=[]; }catch(e){}
+}
+function restoreFromDataURL(dataURL){
+    const img = new Image();
+    img.onload = ()=>{ ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr); ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); ctx.drawImage(img,0,0,canvas.width/dpr,canvas.height/dpr); };
+    img.src = dataURL;
+}
+
+// Drawing tools state
+let drawing=false, erasing=false, started=false, timer=null, timeLeft=90;
+ctx.lineCap='round'; ctx.lineJoin='round';
+
+function ptrPos(e){
+    const rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
+}
+
+canvas.addEventListener('pointerdown', (e)=>{
+    if (!controlsActive()) return;
+    drawing=true;
+    const p=ptrPos(e);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    pushHistory();
+    if(!started) startRoundAuto();
+    if (isDuelActive() && isDuelDrawingAllowed()) emitDrawEvent('begin', p);
+});
+canvas.addEventListener('pointermove', (e)=>{
+    if(!drawing || !controlsActive()) return;
+    const p=ptrPos(e);
+    ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorPicker.value;
+    ctx.lineWidth = brushSize.value;
+    ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+    ctx.globalAlpha = opacity.value;
+    ctx.stroke();
+    if (isDuelActive() && isDuelDrawingAllowed()) emitDrawEvent('draw', p);
+});
+canvas.addEventListener('pointerup', ()=>{ if(drawing){ drawing=false; ctx.closePath(); if (isDuelActive() && isDuelDrawingAllowed()) emitDrawEvent('end'); } });
+canvas.addEventListener('pointerleave', ()=>{ if(drawing){ drawing=false; ctx.closePath(); if (isDuelActive() && isDuelDrawingAllowed()) emitDrawEvent('end'); } });
+
+eraserBtn.addEventListener('click', ()=>{ erasing=true; eraserBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; penBtn.style.boxShadow=''; });
+penBtn.addEventListener('click', ()=>{ erasing=false; penBtn.style.boxShadow='inset 0 0 0 2px rgba(0,0,0,.06)'; eraserBtn.style.boxShadow=''; });
+
+undoBtn.addEventListener('click', ()=>{
+    if(!controlsActive()) return;
+    if(history.length===0) return;
+    const last = history.pop();
+    redoStack.push(canvas.toDataURL());
+    if(history.length===0){
+        ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+    } else {
+        restoreFromDataURL(history[history.length-1]);
     }
+    if (isDuelActive() && isDuelDrawingAllowed()) emitDrawEvent('sync', null, canvas.toDataURL());
+});
+redoBtn.addEventListener('click', ()=>{
+    if(!controlsActive()) return;
+    if(redoStack.length===0) return;
+    const next = redoStack.pop();
+    history.push(canvas.toDataURL());
+    restoreFromDataURL(next);
+    if (isDuelActive() && isDuelDrawingAllowed()) emitDrawEvent('sync', null, next);
+});
 
-    // Host game
-    document.getElementById("hostBtn").onclick = () => {
-      const roomId = Math.random().toString(36).substr(2, 6).toUpperCase();
-      myRoom = roomId;
-      isHost = true;
-      socket.connect();
-      socket.emit("create_room", roomId);
-      document.getElementById("status").textContent = `Hosting! Room code: ${roomId}`;
-      // Pick topic and share with room
-      const topics = Object.keys(topicsWithImages);
-      const topic = topics[Math.floor(Math.random() * topics.length)];
-      setTopic(topic);
-      socket.emit("topic_sync", { room: myRoom, topic });
-    };
+clearBtn.addEventListener('click', ()=>{ 
+    if(!controlsActive()) return;
+    ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); 
+    pushHistory(); 
+    updateScoreDisplay(null); 
+    if (isDuelActive()) emitDrawEvent('clear');
+});
+resetBtn.addEventListener('click', ()=>{
+    clearInterval(timer); timer=null; started=false; timeLeft=90; updateTimerDisplay();
+    ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+    history=[]; redoStack=[];
+    updateScoreDisplay(null);
+    if (isDuelActive()) emitDrawEvent('reset');
+    if (isDuelActive()) resetDuelState();
+});
 
-    // Join game
-    document.getElementById("joinBtn").onclick = () => {
-      const roomId = document.getElementById("roomInput").value.trim();
-      if (!roomId) {
-        document.getElementById("status").textContent = "Please enter a room code.";
-        return;
-      }
-      myRoom = roomId;
-      isHost = false;
-      socket.connect();
-      socket.emit("join_room", roomId);
-      document.getElementById("status").textContent = `Joining room ${roomId}...`;
-    };
+// Topic selection
+function pickTopic(level){
+    const arr = TOPICS[level] || TOPICS.easy;
+    return arr[Math.floor(Math.random()*arr.length)];
+}
+function setReference(topic, level){
+    topicNameEl.textContent = topic;
+    topicDiffEl.textContent = level;
+    // Show image if available
+    if(TOPIC_IMAGES[topic]){
+      topicImageEl.src = TOPIC_IMAGES[topic];
+      topicImageEl.style.display = 'block';
+      topicImageEl.alt = topic;
+    }else{
+      topicImageEl.style.display = 'none';
+      topicImageEl.alt = '';
+      topicImageEl.src = '';
+    }
+    updateScoreDisplay(null);
+}
 
-    // Sync topic for joined players
-    socket.on("topic_sync", data => {
-      if (data.room === myRoom) setTopic(data.topic);
+// Show topic immediately when mode changes
+function showTopicImmediate(){
+    const t = pickTopic(levelSelect.value);
+    setReference(t, levelSelect.value);
+    pushHistory();
+    if (isDuelActive()) {
+        emitTopicSync(t, levelSelect.value);
+    }
+}
+
+newBtn.addEventListener('click', ()=>{
+    showTopicImmediate();
+});
+
+levelSelect.addEventListener('change', ()=>{
+    showTopicImmediate();
+});
+
+modeSelect.addEventListener('change', ()=>{
+    updateUIForMode();
+    showTopicImmediate();
+});
+
+// Timer
+function updateTimerDisplay(){
+    const m = Math.floor(timeLeft/60).toString().padStart(2,'0');
+    const s = (timeLeft%60).toString().padStart(2,'0');
+    timerDisplay.textContent = `${m}:${s}`;
+}
+function startRoundAuto(){
+    if(started || !controlsActive()) return;
+    started = true;
+    timeLeft = 90;
+    updateTimerDisplay();
+    timer = setInterval(()=>{
+        timeLeft--;
+        updateTimerDisplay();
+        if(timeLeft <= 0){
+            clearInterval(timer); timer = null; started = false; endRound();
+        }
+    }, 1000);
+    if (isDuelActive()) emitTimerSync('start', timeLeft);
+}
+
+startBtn.addEventListener('click', ()=>{
+    if(!topicNameEl.textContent){ newBtn.click(); }
+    referenceBox.style.display='block';
+    startBtn.disabled=true; newBtn.disabled=true; levelSelect.disabled=true; modeSelect.disabled=true;
+    let showcount = 3;
+    const pre = setInterval(()=>{
+        startBtn.textContent = `Starting in ${showcount}s`;
+        showcount--;
+        if(showcount < 0){
+            clearInterval(pre);
+            startBtn.textContent = 'Round in progress';
+            startRoundAuto();
+            startBtn.disabled = false; newBtn.disabled=false; levelSelect.disabled=false; modeSelect.disabled=false;
+        }
+    }, 1000);
+    if (isDuelActive() && isHost()) emitTimerSync('start', 90);
+});
+
+// Score
+function endRound(){
+    // Score calc could be improved
+    updateScoreDisplay(Math.floor(Math.random()*51)+50);
+    if (isDuelActive()) emitScoreSync(scoreDisplay.textContent);
+}
+function updateScoreDisplay(percent){
+    if(percent === null || percent === undefined) { scoreDisplay.textContent = '—/100'; }
+    else { scoreDisplay.textContent = `${percent}/100`; }
+}
+
+// UI enable/disable logic
+function controlsActive(){
+    // Only active if game started and not in waiting state
+    if (isDuelActive() && !duelDrawingAllowed) return false;
+    return started || (modeSelect.value !== 'duel');
+}
+function updateUIForMode(){
+    // Show/hide duel setup, disable/enable controls
+    if (modeSelect.value === 'duel') {
+        duelSetup.classList.remove('hidden');
+    } else {
+        duelSetup.classList.add('hidden');
+        hostRoom.classList.add('hidden');
+        duelStatus.textContent = '';
+    }
+    // Always enable reference box
+    referenceBox.style.display = 'block';
+    // Show topic immediately
+    setReference(topicNameEl.textContent, levelSelect.value);
+    // Enable/disable controls
+    const controls = document.querySelectorAll('.controls button, .controls input');
+    controls.forEach(el => el.disabled = (modeSelect.value === 'duel' && !duelDrawingAllowed));
+    startBtn.disabled = false;
+    newBtn.disabled = false;
+    clearBtn.disabled = false;
+    resetBtn.disabled = false;
+    levelSelect.disabled = false;
+}
+
+// Multiplayer logic (Socket.io, minimal serverless, demo only)
+const socket = io("ws://192.168.0.1:3000", { autoConnect: false });
+let roomId = null, isHostFlag = false, duelDrawingAllowed = false, duelJoined = false;
+function generateRoomCode() {
+    return Math.random().toString(36).substr(2, 5).toUpperCase();
+}
+function isDuelActive() {
+    return modeSelect.value === "duel" && roomId != null;
+}
+function isHost() {
+    return isHostFlag;
+}
+function isDuelDrawingAllowed() {
+    return duelDrawingAllowed;
+}
+
+// Host game
+hostBtn.addEventListener('click', ()=>{
+    roomId = generateRoomCode();
+    isHostFlag = true;
+    duelDrawingAllowed = false;
+    hostRoom.classList.remove('hidden');
+    roomCodeEl.textContent = roomId;
+    duelStatus.textContent = 'Waiting for guest...';
+    socket.connect();
+    socket.emit('create_room', roomId);
+    socket.on('room_joined', (data)=>{
+        duelJoined = true;
+        duelDrawingAllowed = true;
+        duelStatus.textContent = 'Guest joined! Ready to play.';
+        showTopicImmediate();
+        startBtn.disabled = false;
     });
+    updateUIForMode();
+});
 
-    // Confirm join
-    socket.on("room_joined", data => {
-      if (data.roomId === myRoom) {
-        document.getElementById("status").textContent = "Joined! Ready to play.";
-      }
+// Join game
+joinBtn.addEventListener('click', ()=>{
+    roomId = joinCode.value.trim().toUpperCase();
+    isHostFlag = false;
+    duelDrawingAllowed = false;
+    duelStatus.textContent = 'Joining room...';
+    socket.connect();
+    socket.emit('join_room', roomId);
+    socket.on('room_joined', (data)=>{
+        duelJoined = true;
+        duelDrawingAllowed = true;
+        duelStatus.textContent = 'Joined! Ready to play.';
+        showTopicImmediate();
+        startBtn.disabled = false;
     });
+    updateUIForMode();
+});
 
-    // Auto clear canvas when topic changes (optional)
-    socket.on("topic_sync", () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    });
+// Drawing sync
+function emitDrawEvent(type, p, imageData){
+    if (!isDuelActive()) return;
+    const payload = {type, p, imageData, room: roomId};
+    socket.emit('draw_event', payload);
+}
+socket.on('draw_event', (data)=>{
+    if (!isDuelActive() || !duelDrawingAllowed) return;
+    if (data.type === 'begin') {
+        ctx.beginPath(); ctx.moveTo(data.p.x, data.p.y);
+    } else if (data.type === 'draw') {
+        ctx.lineTo(data.p.x, data.p.y);
+        ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorPicker.value;
+        ctx.lineWidth = brushSize.value;
+        ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+        ctx.globalAlpha = opacity.value;
+        ctx.stroke();
+    } else if (data.type === 'end') {
+        ctx.closePath();
+    } else if (data.type === 'sync' && data.imageData) {
+        restoreFromDataURL(data.imageData);
+    } else if (data.type === 'clear') {
+        ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+        pushHistory();
+    } else if (data.type === 'reset') {
+        ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+        history=[]; redoStack=[];
+        updateScoreDisplay(null);
+        resetDuelState();
+    }
+});
 
-    // For demo, set a topic and image on load (singleplayer preview)
-    window.onload = () => {
-      setTopic("Eiffel Tower");
-    };
-  </script>
+// Topic sync
+function emitTopicSync(topic, level){
+    socket.emit('topic_sync', {topic, level, room: roomId});
+}
+socket.on('topic_sync', (data)=>{
+    setReference(data.topic, data.level);
+});
+
+// Timer sync
+function emitTimerSync(action, value){
+    socket.emit('timer_sync', {action, value, room: roomId});
+}
+socket.on('timer_sync', (data)=>{
+    if (data.action === 'start') {
+        timeLeft = data.value || 90;
+        started = true;
+        updateTimerDisplay();
+        if (timer) clearInterval(timer);
+        timer = setInterval(()=>{
+            timeLeft--;
+            updateTimerDisplay();
+            if(timeLeft <= 0){
+                clearInterval(timer); timer = null; started = false; endRound();
+            }
+        }, 1000);
+    }
+});
+
+// Score sync
+function emitScoreSync(score){
+    socket.emit('score_sync', {score, room: roomId});
+}
+socket.on('score_sync', (data)=>{
+    scoreDisplay.textContent = data.score;
+});
+
+// Reset duel state
+function resetDuelState() {
+    duelDrawingAllowed = false;
+    duelJoined = false;
+    started = false;
+    updateUIForMode();
+    duelStatus.textContent = isHostFlag ? "Waiting for guest..." : "Waiting for host...";
+    roomId = null;
+    hostRoom.classList.add('hidden');
+}
+
+// Window load
+window.addEventListener('load', ()=>{
+    showTopicImmediate();
+    updateTimerDisplay();
+    updateScoreDisplay(null);
+    updateUIForMode();
+});
+</script>
 </body>
 </html>
