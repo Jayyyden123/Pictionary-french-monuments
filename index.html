@@ -111,9 +111,9 @@ input[type="text"].roomcode {width: 90px;}
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 const TOPICS = {
-easy: ["Eiffel Tower","Arc de Triomphe"],
-medium: ["Notre-Dame de Paris","Louvre Pyramid"],
-hard: ["Panthéon","Arènes de Nîmes"]
+easy: ["Eiffel Tower","Arc de Triomphe","Place de la Concorde","Place des Vosges"],
+medium: ["Notre-Dame de Paris","Louvre Pyramid","Les Invalides","Palais Garnier","Conciergerie"],
+hard: ["Panthéon","Arènes de Nîmes","Sainte-Chapelle","Sacré-Coeur Basilica","Grand Palais","Petit Palais","Rouen Cathedral"]
 };
 // Monument images
 const TOPIC_IMAGES = {
@@ -123,6 +123,16 @@ const TOPIC_IMAGES = {
   "Louvre Pyramid": "https://cdn.britannica.com/74/250074-050-DD110B36/IM-Pei-designed-pyramid-Louvre-Paris-France.jpg",
   "Panthéon": "https://theromanguy.com/wp-content/uploads/pantheon-feature-real.jpeg",
   "Arènes de Nîmes": "https://i.familiscope.fr/1400x787/smart/2023/03/08/arenes-nimes-deposit.jpg"
+    "Place de la Concorde": "https://www.parisdigest.com/photos/obelisk-place-de-la-concorde.jpg"
+  "Place des Vosges": "https://www.parismarais.com/img/editor/P1110534%20-%20copie.JPG"
+  "Les Invalides": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/H%C3%B4tel_des_Invalides%2C_North_View%2C_Paris_7e_140402_1.jpg/960px-H%C3%B4tel_des_Invalides%2C_North_View%2C_Paris_7e_140402_1.jpg"
+  "Palais Garnier": "https://www.jouffre.com/content/cache/media_jouffre-ac-perrot-opera-garnier-c-jean-pierre-delagarde-12/350x250.webp"
+  "Conciergerie": "https://calliopee-art-culture.com/wp-content/uploads/2019/11/CONCIERGERIE-e1699450906531.jpeg"
+  "Sainte-Chapelle": "https://www.holidify.com/images/cmsuploads/compressed/PI42855-hr_20190701161808.jpg"
+  "Sacré-Coeur Basilica": "https://media.cntraveler.com/photos/58ebdfe40c1a3d2af158f565/master/pass/paris-sacre-coeur-GettyImages-466097160.jpg"
+  "Grand Palais": "https://www.centrepompidou.fr/fileadmin/user_upload/constellation_partenaire_grand-palais_photo-lieu_2.jpg"
+  "Petit Palais": "https://paristouristinformation.fr/wp-content/uploads/2021/06/petit-palais-in-paris-in-france.jpg"
+  "Rouen Cathedral": "https://www.ffagh.org/image/visite/170.jpg"
 };
 
 const modeSelect = document.getElementById('modeSelect');
