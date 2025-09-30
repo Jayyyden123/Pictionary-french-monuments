@@ -23,6 +23,9 @@ button.primary{background:var(--accent);color:white;border:none}
 input[type="text"].roomcode {width: 90px;}
 .search-row {display: flex; gap: 8px; align-items: center; margin: 8px 0;}
 #searchError {color: #d02f2f; font-size: 13px; margin-left: 10px;}
+.topic-display {margin: 18px 0 0 0; text-align: center;}
+.topic-display strong {display: block; font-size: 17px; margin-bottom: 8px;}
+.topic-display img {max-width: 90%; max-height: 180px; border-radius: 8px; border: 1px solid #e6eef9; display: block; margin: 0 auto;}
 </style>
 </head>
 <body>
@@ -68,7 +71,12 @@ input[type="text"].roomcode {width: 90px;}
 <button id="searchBtn">Search</button>
 <span id="searchError"></span>
 </div>
-<div class="small" id="currentTopic"></div>
+
+<!-- Topic display area (will appear below Start Round) -->
+<div id="topicDisplay" class="topic-display hidden">
+  <strong id="topicDisplayName"></strong>
+  <img id="topicDisplayImage" src="" alt="" style="display:none;">
+</div>
 </div>
 
 <div class="panel" style="display:flex;flex-direction:column;">
@@ -107,6 +115,15 @@ easy: ["Eiffel Tower","Arc de Triomphe"],
 medium: ["Notre-Dame de Paris","Louvre Pyramid"],
 hard: ["Panthéon","Arènes de Nîmes"]
 };
+// Monument images
+const TOPIC_IMAGES = {
+  "Eiffel Tower": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg",
+  "Arc de Triomphe": "https://cdn-imgix.headout.com/media/images/33ac22c30b1018ac1aa75c6a4c24075a-7504-Paris-ArcdeTriompheTicketswithRooftopAccess-09.jpg?auto=format&q=90&crop=faces&fit=crop",
+  "Notre-Dame de Paris": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Notre-Dame_de_Paris_2013-07-24.jpg/330px-Notre-Dame_de_Paris_2013-07-24.jpg",
+  "Louvre Pyramid": "https://cdn.britannica.com/74/250074-050-DD110B36/IM-Pei-designed-pyramid-Louvre-Paris-France.jpg",
+  "Panthéon": "https://theromanguy.com/wp-content/uploads/pantheon-feature-real.jpeg",
+  "Arènes de Nîmes": "https://i.familiscope.fr/1400x787/smart/2023/03/08/arenes-nimes-deposit.jpg"
+};
 
 const modeSelect = document.getElementById('modeSelect');
 const levelSelect = document.getElementById('levelSelect');
@@ -115,14 +132,18 @@ const startBtn = document.getElementById('startBtn');
 const clearBtn = document.getElementById('clearBtn');
 const resetBtn = document.getElementById('resetBtn');
 
-const timerDisplay = document.getElementById('timerDisplay');
-const scoreDisplay = document.getElementById('scoreDisplay');
-const currentTopicEl = document.getElementById('currentTopic');
-
 // Search bar elements
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const searchError = document.getElementById('searchError');
+
+// Topic display elements
+const topicDisplay = document.getElementById('topicDisplay');
+const topicDisplayName = document.getElementById('topicDisplayName');
+const topicDisplayImage = document.getElementById('topicDisplayImage');
+
+const timerDisplay = document.getElementById('timerDisplay');
+const scoreDisplay = document.getElementById('scoreDisplay');
 
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
@@ -238,11 +259,30 @@ resetBtn.addEventListener('click', ()=>{
     if (isDuelActive()) resetDuelState();
 });
 
-// Topic selection
+// Topic selection logic
 let currentTopic = "";
 function setCurrentTopic(topic, level){
     currentTopic = topic;
-    currentTopicEl.textContent = topic ? `Selected: ${topic} (${level})` : "";
+    // Show monument display
+    if(topic){
+        topicDisplay.classList.remove('hidden');
+        topicDisplayName.textContent = topic;
+        if(TOPIC_IMAGES[topic]){
+            topicDisplayImage.src = TOPIC_IMAGES[topic];
+            topicDisplayImage.alt = topic;
+            topicDisplayImage.style.display = 'block';
+        } else {
+            topicDisplayImage.src = "";
+            topicDisplayImage.alt = "";
+            topicDisplayImage.style.display = 'none';
+        }
+    } else {
+        topicDisplay.classList.add('hidden');
+        topicDisplayName.textContent = "";
+        topicDisplayImage.src = "";
+        topicDisplayImage.alt = "";
+        topicDisplayImage.style.display = 'none';
+    }
     updateScoreDisplay(null);
 }
 
@@ -282,7 +322,7 @@ function doSearch(){
 searchBtn.addEventListener('click', doSearch);
 searchInput.addEventListener('keydown', (e)=>{ if(e.key==="Enter") doSearch(); });
 
-// Show topic immediately when mode/level changes
+// Show topic display when mode/level changes
 levelSelect.addEventListener('change', ()=>{
     setCurrentTopic("", levelSelect.value);
 });
