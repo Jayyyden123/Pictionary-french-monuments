@@ -298,11 +298,15 @@ randomBtn.addEventListener('click', ()=>{
     if (isDuelActive()) emitTopicSync(topic, levelSelect.value);
 });
 
-// Search logic
-function searchTopic(input, level){
-    const arr = TOPICS[level] || [];
-    const found = arr.find(t => t.toLowerCase() === input.toLowerCase());
-    return found || null;
+// Search logic (searches ALL difficulties!)
+function searchTopicAllDifficulties(input){
+    input = input.toLowerCase();
+    for (const level of Object.keys(TOPICS)) {
+        const arr = TOPICS[level];
+        const found = arr.find(t => t.toLowerCase() === input);
+        if(found) return found;
+    }
+    return null;
 }
 function doSearch(){
     searchError.textContent = "";
@@ -311,12 +315,12 @@ function doSearch(){
         searchError.textContent = "Type a monument name!";
         return;
     }
-    const found = searchTopic(val, levelSelect.value);
+    const found = searchTopicAllDifficulties(val);
     if(found){
-        setCurrentTopic(found, levelSelect.value);
-        if (isDuelActive()) emitTopicSync(found, levelSelect.value);
+        setCurrentTopic(found, "any");
+        if (isDuelActive()) emitTopicSync(found, "any");
     }else{
-        searchError.textContent = "Monument not found for this difficulty!";
+        searchError.textContent = "Monument not found!";
     }
 }
 searchBtn.addEventListener('click', doSearch);
