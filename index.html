@@ -11,8 +11,6 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:
 .panel{background:white;border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(20,40,60,.06);display:flex;flex-direction:column;}
 h1{margin:0 0 12px;font-size:20px}
 select,input,button{padding:8px;border-radius:8px;border:1px solid #e6eef9;background:transparent;font-size:13px}
-.reference{margin-top:10px;font-size:16px;font-weight:bold}
-.reference img {margin-top:8px;max-width:90%;max-height:180px;border-radius:8px;border:1px solid #e6eef9;display:block;}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 #drawCanvas{background:#fff;border-radius:8px;border:1px solid #e6eef9;touch-action:none;width:100%;height:100%;}
 .controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
@@ -23,6 +21,8 @@ button.primary{background:var(--accent);color:white;border:none}
 .hidden {display: none;}
 .room-row {display: flex; gap: 8px; align-items: center; margin: 8px 0;}
 input[type="text"].roomcode {width: 90px;}
+.search-row {display: flex; gap: 8px; align-items: center; margin: 8px 0;}
+#searchError {color: #d02f2f; font-size: 13px; margin-left: 10px;}
 </style>
 </head>
 <body>
@@ -56,18 +56,19 @@ input[type="text"].roomcode {width: 90px;}
 <span id="duelStatus"></span>
 </div>
 
-<div class="reference" id="referenceBox">
-<strong id="topicName"></strong>
-<div class="small" id="topicDiff"></div>
-<img id="topicImage" src="" alt="" style="display:none;">
-</div>
-
 <div class="toolbar">
-<button id="newBtn">New Topic</button>
+<button id="randomBtn">Random Topic</button>
 <button id="startBtn" class="primary">Start Round (1:30)</button>
 <button id="clearBtn">Clear</button>
 <button id="resetBtn">Reset</button>
 </div>
+
+<div class="search-row">
+<input id="searchInput" type="text" placeholder="Search monument..." autocomplete="off" style="flex:1;">
+<button id="searchBtn">Search</button>
+<span id="searchError"></span>
+</div>
+<div class="small" id="currentTopic"></div>
 </div>
 
 <div class="panel" style="display:flex;flex-direction:column;">
@@ -106,29 +107,22 @@ easy: ["Eiffel Tower","Arc de Triomphe"],
 medium: ["Notre-Dame de Paris","Louvre Pyramid"],
 hard: ["Panthéon","Arènes de Nîmes"]
 };
-// Monument images
-const TOPIC_IMAGES = {
-  "Eiffel Tower": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg",
-  "Arc de Triomphe": "https://cdn-imgix.headout.com/media/images/33ac22c30b1018ac1aa75c6a4c24075a-7504-Paris-ArcdeTriompheTicketswithRooftopAccess-09.jpg?auto=format&q=90&crop=faces&fit=crop",
-  "Notre-Dame de Paris": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Notre-Dame_de_Paris_2013-07-24.jpg/330px-Notre-Dame_de_Paris_2013-07-24.jpg",
-  "Louvre Pyramid": "https://cdn.britannica.com/74/250074-050-DD110B36/IM-Pei-designed-pyramid-Louvre-Paris-France.jpg",
-  "Panthéon": "https://theromanguy.com/wp-content/uploads/pantheon-feature-real.jpeg",
-  "Arènes de Nîmes": "https://i.familiscope.fr/1400x787/smart/2023/03/08/arenes-nimes-deposit.jpg"
-};
 
 const modeSelect = document.getElementById('modeSelect');
 const levelSelect = document.getElementById('levelSelect');
-const newBtn = document.getElementById('newBtn');
+const randomBtn = document.getElementById('randomBtn');
 const startBtn = document.getElementById('startBtn');
 const clearBtn = document.getElementById('clearBtn');
 const resetBtn = document.getElementById('resetBtn');
 
-const topicNameEl = document.getElementById('topicName');
-const topicDiffEl = document.getElementById('topicDiff');
-const topicImageEl = document.getElementById('topicImage');
-
 const timerDisplay = document.getElementById('timerDisplay');
 const scoreDisplay = document.getElementById('scoreDisplay');
+const currentTopicEl = document.getElementById('currentTopic');
+
+// Search bar elements
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
+const searchError = document.getElementById('searchError');
 
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
@@ -245,47 +239,56 @@ resetBtn.addEventListener('click', ()=>{
 });
 
 // Topic selection
-function pickTopic(level){
-    const arr = TOPICS[level] || TOPICS.easy;
-    return arr[Math.floor(Math.random()*arr.length)];
-}
-function setReference(topic, level){
-    topicNameEl.textContent = topic;
-    topicDiffEl.textContent = level;
-    // Show image if available
-    if(TOPIC_IMAGES[topic]){
-      topicImageEl.src = TOPIC_IMAGES[topic];
-      topicImageEl.style.display = 'block';
-      topicImageEl.alt = topic;
-    }else{
-      topicImageEl.style.display = 'none';
-      topicImageEl.alt = '';
-      topicImageEl.src = '';
-    }
+let currentTopic = "";
+function setCurrentTopic(topic, level){
+    currentTopic = topic;
+    currentTopicEl.textContent = topic ? `Selected: ${topic} (${level})` : "";
     updateScoreDisplay(null);
 }
 
-// Show topic immediately when mode changes
-function showTopicImmediate(){
-    const t = pickTopic(levelSelect.value);
-    setReference(t, levelSelect.value);
-    pushHistory();
-    if (isDuelActive()) {
-        emitTopicSync(t, levelSelect.value);
-    }
+function pickRandomTopic(level){
+    const arr = TOPICS[level] || TOPICS.easy;
+    return arr[Math.floor(Math.random()*arr.length)];
 }
 
-newBtn.addEventListener('click', ()=>{
-    showTopicImmediate();
+// Random Topic button logic
+randomBtn.addEventListener('click', ()=>{
+    const topic = pickRandomTopic(levelSelect.value);
+    setCurrentTopic(topic, levelSelect.value);
+    if (isDuelActive()) emitTopicSync(topic, levelSelect.value);
 });
 
+// Search logic
+function searchTopic(input, level){
+    const arr = TOPICS[level] || [];
+    const found = arr.find(t => t.toLowerCase() === input.toLowerCase());
+    return found || null;
+}
+function doSearch(){
+    searchError.textContent = "";
+    const val = searchInput.value.trim();
+    if(!val){
+        searchError.textContent = "Type a monument name!";
+        return;
+    }
+    const found = searchTopic(val, levelSelect.value);
+    if(found){
+        setCurrentTopic(found, levelSelect.value);
+        if (isDuelActive()) emitTopicSync(found, levelSelect.value);
+    }else{
+        searchError.textContent = "Monument not found for this difficulty!";
+    }
+}
+searchBtn.addEventListener('click', doSearch);
+searchInput.addEventListener('keydown', (e)=>{ if(e.key==="Enter") doSearch(); });
+
+// Show topic immediately when mode/level changes
 levelSelect.addEventListener('change', ()=>{
-    showTopicImmediate();
+    setCurrentTopic("", levelSelect.value);
 });
-
 modeSelect.addEventListener('change', ()=>{
     updateUIForMode();
-    showTopicImmediate();
+    setCurrentTopic("", levelSelect.value);
 });
 
 // Timer
@@ -310,9 +313,8 @@ function startRoundAuto(){
 }
 
 startBtn.addEventListener('click', ()=>{
-    if(!topicNameEl.textContent){ newBtn.click(); }
-    referenceBox.style.display='block';
-    startBtn.disabled=true; newBtn.disabled=true; levelSelect.disabled=true; modeSelect.disabled=true;
+    if(!currentTopic){ randomBtn.click(); }
+    startBtn.disabled=true; randomBtn.disabled=true; levelSelect.disabled=true; modeSelect.disabled=true;
     let showcount = 3;
     const pre = setInterval(()=>{
         startBtn.textContent = `Starting in ${showcount}s`;
@@ -321,7 +323,7 @@ startBtn.addEventListener('click', ()=>{
             clearInterval(pre);
             startBtn.textContent = 'Round in progress';
             startRoundAuto();
-            startBtn.disabled = false; newBtn.disabled=false; levelSelect.disabled=false; modeSelect.disabled=false;
+            startBtn.disabled = false; randomBtn.disabled=false; levelSelect.disabled=false; modeSelect.disabled=false;
         }
     }, 1000);
     if (isDuelActive() && isHost()) emitTimerSync('start', 90);
@@ -329,7 +331,6 @@ startBtn.addEventListener('click', ()=>{
 
 // Score
 function endRound(){
-    // Score calc could be improved
     updateScoreDisplay(Math.floor(Math.random()*51)+50);
     if (isDuelActive()) emitScoreSync(scoreDisplay.textContent);
 }
@@ -340,12 +341,10 @@ function updateScoreDisplay(percent){
 
 // UI enable/disable logic
 function controlsActive(){
-    // Only active if game started and not in waiting state
     if (isDuelActive() && !duelDrawingAllowed) return false;
     return started || (modeSelect.value !== 'duel');
 }
 function updateUIForMode(){
-    // Show/hide duel setup, disable/enable controls
     if (modeSelect.value === 'duel') {
         duelSetup.classList.remove('hidden');
     } else {
@@ -353,15 +352,10 @@ function updateUIForMode(){
         hostRoom.classList.add('hidden');
         duelStatus.textContent = '';
     }
-    // Always enable reference box
-    referenceBox.style.display = 'block';
-    // Show topic immediately
-    setReference(topicNameEl.textContent, levelSelect.value);
-    // Enable/disable controls
     const controls = document.querySelectorAll('.controls button, .controls input');
     controls.forEach(el => el.disabled = (modeSelect.value === 'duel' && !duelDrawingAllowed));
     startBtn.disabled = false;
-    newBtn.disabled = false;
+    randomBtn.disabled = false;
     clearBtn.disabled = false;
     resetBtn.disabled = false;
     levelSelect.disabled = false;
@@ -397,7 +391,7 @@ hostBtn.addEventListener('click', ()=>{
         duelJoined = true;
         duelDrawingAllowed = true;
         duelStatus.textContent = 'Guest joined! Ready to play.';
-        showTopicImmediate();
+        randomBtn.disabled = false;
         startBtn.disabled = false;
     });
     updateUIForMode();
@@ -415,7 +409,7 @@ joinBtn.addEventListener('click', ()=>{
         duelJoined = true;
         duelDrawingAllowed = true;
         duelStatus.textContent = 'Joined! Ready to play.';
-        showTopicImmediate();
+        randomBtn.disabled = false;
         startBtn.disabled = false;
     });
     updateUIForMode();
@@ -458,7 +452,7 @@ function emitTopicSync(topic, level){
     socket.emit('topic_sync', {topic, level, room: roomId});
 }
 socket.on('topic_sync', (data)=>{
-    setReference(data.topic, data.level);
+    setCurrentTopic(data.topic, data.level);
 });
 
 // Timer sync
@@ -502,7 +496,7 @@ function resetDuelState() {
 
 // Window load
 window.addEventListener('load', ()=>{
-    showTopicImmediate();
+    setCurrentTopic("", levelSelect.value);
     updateTimerDisplay();
     updateScoreDisplay(null);
     updateUIForMode();
