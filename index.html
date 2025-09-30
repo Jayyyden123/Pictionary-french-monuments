@@ -201,10 +201,16 @@ function restoreFromDataURL(dataURL){
 let drawing=false, erasing=false, started=false, timer=null, timeLeft=90;
 ctx.lineCap='round'; ctx.lineJoin='round';
 
+// ------- FIXED ptrPos function to correct mouse offset ---------
 function ptrPos(e){
     const rect = canvas.getBoundingClientRect();
-    return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
+    // Adjust for device pixel ratio and canvas offset
+    return { 
+        x: (e.clientX - rect.left) * (canvas.width / rect.width) / dpr, 
+        y: (e.clientY - rect.top) * (canvas.height / rect.height) / dpr 
+    };
 }
+// --------------------------------------------------------------
 
 canvas.addEventListener('pointerdown', (e)=>{
     if (!controlsActive()) return;
