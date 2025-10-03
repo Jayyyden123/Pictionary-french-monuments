@@ -76,6 +76,7 @@ input[type="text"].roomcode {width: 90px;}
 <div id="topicDisplay" class="topic-display hidden">
   <strong id="topicDisplayName"></strong>
   <img id="topicDisplayImage" src="" alt="" style="display:none;">
+  <div id="topicWriteup" style="text-align:left;max-width:600px;margin:18px auto 0 auto;"></div>
 </div>
 </div>
 
@@ -135,6 +136,106 @@ const TOPIC_IMAGES = {
   "Rouen Cathedral": "https://www.ffagh.org/image/visite/170.jpg"
 };
 
+// Monument write-ups
+const TOPIC_INFOS = {
+  "Eiffel Tower": [
+    "La Tour Eiffel a été conçue par l'ingénieur Gustave Eiffel et son entreprise pour l'Exposition universelle de 1889 à Paris.",
+    "Elle a été construite entre 1887 et 1889.",
+    "Elle est située à Paris, dans l'État d'Île-de-France, en France.",
+    "Fun fact: The Eiffel Tower was initially intended to be demolished after 20 years but became a permanent symbol of Paris."
+  ],
+  "Arc de Triomphe": [
+    "L'Arc de Triomphe a été commandé par Napoléon Ier après sa victoire à Austerlitz.",
+    "Sa construction a commencé en 1806 et s'est terminée en 1836.",
+    "Il se trouve à Paris, Île-de-France, France.",
+    "Fun fact: Beneath the Arc is the Tomb of the Unknown Soldier from World War I."
+  ],
+  "Place de la Concorde": [
+    "La Place de la Concorde a été conçue par l'architecte Ange-Jacques Gabriel.",
+    "Elle a été créée entre 1755 et 1775.",
+    "Elle est située au centre de Paris, en France.",
+    "Fun fact: During the French Revolution, King Louis XVI was executed here."
+  ],
+  "Place des Vosges": [
+    "La Place des Vosges a été commandée par le roi Henri IV.",
+    "Elle a été achevée en 1612.",
+    "Elle se trouve dans le quartier du Marais, à Paris, France.",
+    "Fun fact: Victor Hugo's house is on this square."
+  ],
+  "Notre-Dame de Paris": [
+    "La cathédrale Notre-Dame de Paris a été commencée par l'évêque Maurice de Sully.",
+    "La construction a débuté en 1163 et s'est terminée en 1345.",
+    "Elle se situe à Paris, Île-de-France, France.",
+    "Fun fact: The hunchback in Victor Hugo's novel is called Quasimodo."
+  ],
+  "Louvre Pyramid": [
+    "La pyramide du Louvre a été conçue par l'architecte Ieoh Ming Pei.",
+    "Elle a été inaugurée en 1989.",
+    "Elle se trouve dans la cour Napoléon du musée du Louvre, Paris, France.",
+    "Fun fact: The pyramid is made of 673 glass panes."
+  ],
+  "Les Invalides": [
+    "Les Invalides ont été fondés par le roi Louis XIV pour les soldats blessés.",
+    "La construction a commencé en 1671 et s'est terminée en 1676.",
+    "L'ensemble est situé à Paris, France.",
+    "Fun fact: Napoleon Bonaparte is buried under the dome."
+  ],
+  "Palais Garnier": [
+    "Le Palais Garnier a été conçu par l'architecte Charles Garnier.",
+    "Sa construction a débuté en 1861 et s'est achevée en 1875.",
+    "Il est à Paris, France.",
+    "Fun fact: The opera house inspired 'The Phantom of the Opera'."
+  ],
+  "Conciergerie": [
+    "La Conciergerie était à l'origine un palais royal transformé en prison.",
+    "Sa construction date du XIVe siècle.",
+    "Elle se situe sur l'île de la Cité, Paris, France.",
+    "Fun fact: Marie-Antoinette was imprisoned here."
+  ],
+  "Panthéon": [
+    "Le Panthéon a été commandé par le roi Louis XV.",
+    "Il a été achevé en 1790.",
+    "Il est situé dans le Quartier Latin, Paris, France.",
+    "Fun fact: It's the burial place of Voltaire, Rousseau, and Marie Curie."
+  ],
+  "Arènes de Nîmes": [
+    "Les arènes de Nîmes ont été construites par les Romains.",
+    "Elles datent du Ier siècle après J.-C.",
+    "Elles se trouvent à Nîmes, dans le sud de la France.",
+    "Fun fact: They are still used for concerts and bullfights today."
+  ],
+  "Sainte-Chapelle": [
+    "La Sainte-Chapelle a été commandée par le roi Louis IX (Saint Louis).",
+    "Elle a été consacrée en 1248.",
+    "Elle se situe sur l'île de la Cité à Paris, France.",
+    "Fun fact: Its stained glass windows are among the most extensive in the world."
+  ],
+  "Sacré-Coeur Basilica": [
+    "La basilique du Sacré-Cœur a été dessinée par Paul Abadie.",
+    "Sa construction a commencé en 1875 et s'est achevée en 1914.",
+    "Elle est située au sommet de la butte Montmartre, Paris, France.",
+    "Fun fact: The basilica is one of the highest points in Paris."
+  ],
+  "Grand Palais": [
+    "Le Grand Palais a été conçu par les architectes Henri Deglane, Albert Louvet, et Albert Thomas.",
+    "Il a été construit pour l'Exposition universelle de 1900.",
+    "Il est situé à Paris, France.",
+    "Fun fact: Its glass roof is one of the largest in Europe."
+  ],
+  "Petit Palais": [
+    "Le Petit Palais a été conçu par l'architecte Charles Girault.",
+    "Il a été construit entre 1897 et 1900.",
+    "Il est situé à Paris, France.",
+    "Fun fact: Today it houses the City of Paris Museum of Fine Arts."
+  ],
+  "Rouen Cathedral": [
+    "La cathédrale Notre-Dame de Rouen a été commencée sous l'évêque Hugues d'Amiens.",
+    "Sa construction s'est étalée du XIIe au XVIe siècle.",
+    "Elle est située à Rouen, Normandie, France.",
+    "Fun fact: Claude Monet painted the cathedral more than 30 times."
+  ]
+};
+
 const modeSelect = document.getElementById('modeSelect');
 const levelSelect = document.getElementById('levelSelect');
 const randomBtn = document.getElementById('randomBtn');
@@ -151,6 +252,7 @@ const searchError = document.getElementById('searchError');
 const topicDisplay = document.getElementById('topicDisplay');
 const topicDisplayName = document.getElementById('topicDisplayName');
 const topicDisplayImage = document.getElementById('topicDisplayImage');
+const topicWriteup = document.getElementById('topicWriteup');
 
 const timerDisplay = document.getElementById('timerDisplay');
 const scoreDisplay = document.getElementById('scoreDisplay');
@@ -201,7 +303,6 @@ function restoreFromDataURL(dataURL){
 let drawing=false, erasing=false, started=false, timer=null, timeLeft=90;
 ctx.lineCap='round'; ctx.lineJoin='round';
 
-// ------- FIXED ptrPos function to correct mouse offset ---------
 function ptrPos(e){
     const rect = canvas.getBoundingClientRect();
     // Adjust for device pixel ratio and canvas offset
@@ -210,7 +311,6 @@ function ptrPos(e){
         y: (e.clientY - rect.top) * (canvas.height / rect.height) / dpr 
     };
 }
-// --------------------------------------------------------------
 
 canvas.addEventListener('pointerdown', (e)=>{
     if (!controlsActive()) return;
@@ -292,12 +392,21 @@ function setCurrentTopic(topic, level){
             topicDisplayImage.alt = "";
             topicDisplayImage.style.display = 'none';
         }
+        // Show write-up
+        if (TOPIC_INFOS[topic]) {
+            topicWriteup.innerHTML = TOPIC_INFOS[topic].map((par,i) => 
+                `<p${i===3?' style="font-style:italic;color:#0b2433;"':''}>${par}</p>`
+            ).join("");
+        } else {
+            topicWriteup.innerHTML = "";
+        }
     } else {
         topicDisplay.classList.add('hidden');
         topicDisplayName.textContent = "";
         topicDisplayImage.src = "";
         topicDisplayImage.alt = "";
         topicDisplayImage.style.display = 'none';
+        topicWriteup.innerHTML = "";
     }
     updateScoreDisplay(null);
 }
