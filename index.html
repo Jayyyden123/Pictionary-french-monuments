@@ -26,6 +26,80 @@ input[type="text"].roomcode {width: 90px;}
 .topic-display {margin: 18px 0 0 0; text-align: center;}
 .topic-display strong {display: block; font-size: 17px; margin-bottom: 8px;}
 .topic-display img {max-width: 90%; max-height: 180px; border-radius: 8px; border: 1px solid #e6eef9; display: block; margin: 0 auto;}
+
+/* --- Adjustments to fix slider reach and alignment --- */
+.controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  color: #0b2433;
+}
+
+/* Make range inputs a fixed but responsive width so the thumb can reach the ends.
+   You can adjust the width value or use flex: 1 if you want them to stretch. */
+.controls input[type="range"]{
+  width: 180px;
+  margin: 0;
+  padding: 0;
+  /* keep native look but ensure consistent layout */
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  vertical-align: middle;
+}
+
+/* WebKit track styling (keeps default look but removes extra spacing) */
+.controls input[type="range"]::-webkit-slider-runnable-track{
+  height: 8px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #bfe1ff 0%, #7fc7ff 100%);
+}
+
+/* WebKit thumb */
+.controls input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0b64b3;
+  margin-top: -4px; /* center the thumb on the track */
+  box-shadow: 0 0 0 4px rgba(31,126,208,0.12);
+  cursor: pointer;
+}
+
+/* Firefox track and thumb */
+.controls input[type="range"]::-moz-range-track{
+  height: 8px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #bfe1ff 0%, #7fc7ff 100%);
+}
+.controls input[type="range"]::-moz-range-thumb{
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0b64b3;
+  border: none;
+  cursor: pointer;
+}
+
+/* ensure color input aligns with labels */
+.controls input[type="color"]{
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #e6eef9;
+  vertical-align: middle;
+}
+
+/* small tweaks for buttons to align with controls */
+.controls button, .controls label { height: 36px; line-height: 36px; }
+.controls button { padding: 6px 10px; }
+
+/* --- End adjustments --- */
 </style>
 </head>
 <body>
